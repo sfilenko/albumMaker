@@ -1,0 +1,93 @@
+{
+  "phase": 5,
+  "base": "bf97b4c8de13b73d7a0ae77ad3e52d7fb7136081",
+  "feature": "feat-album-builder",
+  "evidence_sha256": "3dc96545d7dcdb53664fa05ee9078de1e834920f772ef85c688f3d41a123e963",
+  "diff_stat": "(no tracked changes); 14 new/changed untracked files shown in full, 11 of them in phase 5 scope",
+  "status": "pass",
+  "prediction": [
+    "Files: src/ui/dnd.ts, PhotoPanel.tsx, TemplatePanel.tsx, SpreadStrip.tsx, CellToolbar.tsx (new); SpreadView.tsx, Editor.tsx, strings.ts, styles.css (modified); tests/e2e/dnd.spec.ts, tests/e2e/crop.spec.ts (new).",
+    "dnd.ts: startDrag, registerDropTarget, 'drop-hover' class, 250 ms touch long-press with movement cancel, armedPhoto signal for tap-to-place; pointer events, not HTML5 draggable.",
+    "PhotoPanel: 'Додати папку' only when a folder picker exists, 'Додати фото', import progress, closable skipped list, 'використано X / Y' from photoUsage, name order, photo-<name> test ids, check mark and use count, 'Прибрати з альбому' -> removePhoto, panel is a drop target for cells -> clearCell.",
+    "TemplatePanel: TEMPLATES miniatures from cellRects(templateLayout(id), settings), 'ваш приклад' badge for mine, click -> applyTemplate on current spread, current marked, template-<id> test ids.",
+    "SpreadStrip: strip-<index>, 'Обкладинка' on cover, click selects, drag reorders via moveSpread with cover fixed, '+' -> addSpread(current) and selects it, delete with confirm -> removeSpread, cover not deletable.",
+    "SpreadView: cell drop targets (photo -> placePhoto, cell -> swapCells), click selects, dblclick enters crop mode, pan via panCrop and wheel via zoomCrop with coalesce 'crop', zoom >= 1, Escape exits, low-dpi icon when effectiveDpi < LOW_DPI with dpi value.",
+    "CellToolbar: zoom slider min 1 max 8, 'Кадрувати', 'Прибрати фото' -> clearCell.",
+    "Editor wires the panels, tracks selected spread/cell and crop state; strings.ts gets the new Ukrainian strings.",
+    "Tests: dnd.spec.ts with cell-1-0, photo-land-2.jpg tap, g8, 17 strip items, reload survival, swap on 'two', drag to photo column; crop.spec.ts with window.__store cx read, 100 px left drag, one Ctrl+Z, mouse.wheel zoom >= 1, low-dpi about 75.",
+    "Risks: coalesce key granularity; cover kept first; '+' after current; mobile tap path; test.skip on a project hollowing 'both projects'."
+  ],
+  "divergences": [
+    {
+      "expected": "Pans and zooms dispatch with the literal coalesce key 'crop'.",
+      "found": "src/ui/SpreadView.tsx uses a per-gesture key `crop:${e.timeStamp}` for pan/pinch and `crop:wheel:${timeStamp}` per 400 ms wheel burst; src/ui/CellToolbar.tsx uses `crop:zoom:${performance.now()}` per slider movement. src/state/store.ts:25 says 'A run of dispatches with one key is one undo step', so a fixed 'crop' key would merge consecutive separate crop gestures into one undo step; the per-gesture keys make one gesture one undo step.",
+      "explained_by_plan": true,
+      "plan_quote": "\"Pans and zooms dispatch with `coalesce: 'crop'`.\" and the completion criterion \"In crop mode, a drag of 100 px to the left gives `cx > 0.5` ... and one Ctrl+Z restores it.\" The keys keep the 'crop' namespace and coalesce each pan or zoom gesture, which is what the one-Ctrl+Z criterion needs."
+    },
+    {
+      "expected": "Every Phase 5 case runs on both Playwright projects.",
+      "found": "tests/e2e/crop.spec.ts:62 skips the wheel-zoom/double-click/Escape case on mobile-webkit ('Playwright mobile WebKit has no mouse wheel'). The slider-never-below-1 case and the pan/Ctrl+Z case do run on mobile-webkit.",
+      "explained_by_plan": true,
+      "plan_quote": "Decision Log: \"A double-click or double-tap starts crop mode, where a drag pans, the wheel or a pinch zooms, and Escape ends it.\" The wheel is the desktop input; the criterion only requires the case to be in the tests and Playwright to exit 0 on both projects, which it does (21 passed, 1 skipped)."
+    },
+    {
+      "expected": "The mobile tap-to-place test taps (touch pointer) photo-land-2.jpg and cell-1-0.",
+      "found": "tests/e2e/dnd.spec.ts:70-71 uses locator.click() on both projects, which Playwright sends as mouse events even on iPhone 13. The touch branch of startDrag (250 ms long-press timer, src/ui/dnd.ts:1355 in bundle) is never exercised by any e2e test; mouseDrag also uses page.mouse on mobile-webkit. Tap-to-place itself uses onClick in Thumb and CellBox, so the same handlers run for a real tap.",
+      "explained_by_plan": true,
+      "plan_quote": "\"Mobile: tap `photo-land-2.jpg`, then tap `cell-1-0`: the photo is placed.\" The case is in the tests and passes on the mobile-webkit project; real-touch proof is AC-5.14, owned by the probe."
+    }
+  ],
+  "acceptance": [
+    { "id": "AC-5.1", "result": "pass", "command": "npx playwright test tests/e2e/dnd.spec.ts tests/e2e/crop.spec.ts", "exit_code": 0, "evidence": "Tail: '1 skipped', '21 passed (41.8s)'; all 6 dnd cases ok on desktop-chromium and mobile-webkit; skipped one is crop.spec.ts:61 on mobile-webkit (wheel)." },
+    { "id": "AC-5.2", "result": "pass", "command": "git grep --untracked -n -E \"cell-1-0\" -- tests/e2e/dnd.spec.ts", "exit_code": 0, "evidence": "15 matches, e.g. tests/e2e/dnd.spec.ts:48 mouseDrag(photo-land-1.jpg -> cell-1-0); :50 counter 'використано 1 / 9'." },
+    { "id": "AC-5.3", "result": "pass", "command": "git grep --untracked -n -E \"photo-land-2\\.jpg\" -- tests/e2e/dnd.spec.ts", "exit_code": 0, "evidence": "2 matches: tests/e2e/dnd.spec.ts:58, :70 getByTestId('photo-land-2.jpg').click()." },
+    { "id": "AC-5.4", "result": "pass", "command": "git grep --untracked -n -E \"['\\\"]g8['\\\"]|template-g8\" -- tests/e2e/dnd.spec.ts", "exit_code": 0, "evidence": "1 match: tests/e2e/dnd.spec.ts:90 getByTestId('template-g8').click()." },
+    { "id": "AC-5.5", "result": "pass", "command": "git grep --untracked -n -E \"\\b17\\b\" -- tests/e2e/dnd.spec.ts", "exit_code": 0, "evidence": "2 matches: tests/e2e/dnd.spec.ts:95 test title, :101 toHaveCount(17)." },
+    { "id": "AC-5.6", "result": "pass", "command": "git grep --untracked -n -E \"__store\\.(album|dispatch)\" -- tests/e2e/crop.spec.ts", "exit_code": 0, "evidence": "2 matches: tests/e2e/crop.spec.ts:22 w.__store.dispatch, :31 __store.album.value." },
+    { "id": "AC-5.7", "result": "pass", "command": "git grep --untracked -n -E \"mouse\\.wheel\\(\" -- tests/e2e/crop.spec.ts", "exit_code": 0, "evidence": "2 matches: tests/e2e/crop.spec.ts:70 mouse.wheel(0, -300), :72 mouse.wheel(0, 600)." },
+    { "id": "AC-5.8", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (new album shows cover + 15 spreads)." },
+    { "id": "AC-5.9", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (desktop shows both add buttons)." },
+    { "id": "AC-5.10", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (iPhone shows only 'Додати фото')." },
+    { "id": "AC-5.11", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (notes.txt named as skipped)." },
+    { "id": "AC-5.12", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (name order, counter 0 / 9)." },
+    { "id": "AC-5.13", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (drag fills cell, counter, check mark)." },
+    { "id": "AC-5.14", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (real touch tap-to-place; e2e only uses click())." },
+    { "id": "AC-5.15", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (cell-to-cell swap with crops)." },
+    { "id": "AC-5.16", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (cell onto photo column empties it)." },
+    { "id": "AC-5.17", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (12 template names)." },
+    { "id": "AC-5.18", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (cell counts in panel order)." },
+    { "id": "AC-5.19", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (g8 -> 'Фото + два' keeps first 3)." },
+    { "id": "AC-5.20", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (crop move/zoom, slider 1..8, Escape)." },
+    { "id": "AC-5.21", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (low-dpi icon about 75 dpi)." },
+    { "id": "AC-5.22", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 ('+' adds after current, 17 items, selected)." },
+    { "id": "AC-5.23", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (delete with confirm, cover not deletable)." },
+    { "id": "AC-5.24", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (strip reorder, cover first, survives reload)." },
+    { "id": "AC-5.25", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (placement and thumbnails survive reload)." },
+    { "id": "AC-5.26", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (thumbnails within 2 s)." },
+    { "id": "AC-5.27", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 (one photo in two cells, use count 2)." },
+    { "id": "AC-5.28", "result": "delegated_to_probe", "evidence": "kind: browser; owed by /df:probe phase-5 ('Прибрати з альбому' empties every cell)." }
+  ],
+  "gates": [
+    { "name": "build_command", "command": "npm run build", "exit_code": 0, "tail": "tsc --noEmit && vite build ... dist/assets/index-DWHKidY4.js 136.50 kB ... built in 2.02s" },
+    { "name": "type_check_command", "command": "npm run typecheck", "exit_code": 0, "tail": "> tsc --noEmit (no output)" },
+    { "name": "test_command", "command": "npm test && npm run e2e", "exit_code": 0, "tail": "Vitest: Test Files 9 passed (9), Tests 69 passed (69). Playwright: 1 skipped, 39 passed (11.3s)." }
+  ],
+  "consumers": [
+    { "symbol": "SpreadView (props now selected/onSelect/cropping/onCrop)", "call_sites": ["src/ui/Editor.tsx:70"], "all_updated": true },
+    { "symbol": "Editor ({ store, onClose })", "call_sites": ["src/ui/App.tsx:77"], "all_updated": true },
+    { "symbol": "armedPhoto / startDrag / registerDropTarget (src/ui/dnd.ts, new)", "call_sites": ["src/ui/Editor.tsx:6", "src/ui/PhotoPanel.tsx:10", "src/ui/SpreadStrip.tsx:8", "src/ui/SpreadView.tsx:12"], "all_updated": true },
+    { "symbol": "PhotoPanel / TemplatePanel / SpreadStrip / CellToolbar (new)", "call_sites": ["src/ui/Editor.tsx:94", "src/ui/Editor.tsx:95", "src/ui/Editor.tsx:96", "src/ui/Editor.tsx:85"], "all_updated": true },
+    { "symbol": "strings (keys added)", "call_sites": ["all src/ui/*.tsx; typecheck exit 0 proves every referenced key exists"], "all_updated": true }
+  ],
+  "removed_behavior": [
+    "The bundle has no '-' lines: there are no tracked changes, and the in-phase modified files (src/ui/Editor.tsx, SpreadView.tsx, strings.ts, styles.css) existed untracked before the phase with only a baseline hash recorded, so they appear as whole new files. The pre-phase text of those files is not available to me, so I could not enumerate deleted behavior line by line.",
+    "Indirect check: the Phase 4 e2e specs (shell.spec.ts, spread.spec.ts, including the border drag with one Ctrl+Z and reload, the guides, and the four-area/tab layout) pass on both projects in the test gate, so the Phase 4 behavior of Editor and SpreadView that those tests pin still works."
+  ],
+  "blockers": [],
+  "fail_first": {
+    "present": false,
+    "skipped_reason": "No fail-first evidence was given to the verifier; the e2e specs are new and were only seen passing.",
+    "evidence_path": null,
+    "failure_was_assertion": false
+  }
+}

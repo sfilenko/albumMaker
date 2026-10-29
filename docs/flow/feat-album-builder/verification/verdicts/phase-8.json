@@ -1,0 +1,106 @@
+{
+  "phase": 8,
+  "base": "695fcba82c00ff64f3918f0fefceaf3a38fb46d2",
+  "feature": "feat-album-builder",
+  "evidence_sha256": "3476b2323145733b846865b2c9f23f7f323a203c364c0dfa4e55bc639a1b83d4",
+  "diff_stat": "playwright.config.ts | 2 ++, vite.config.ts | 24 +++++++++++++++++++++++-, 2 files changed, 25 insertions(+), 1 deletion(-); plus 18 new or untracked-changed files (bundle read whole: 2830 of 2830 lines)",
+  "status": "pass",
+  "prediction": [
+    "src/ui/RelinkDialog.tsx (new): pickFiles/pickFolder, describe candidates, matchPhotos, importFiles with ids Map<File,string> so previews land under existing photo ids, registerOriginals; ambiguous/missing rows show name, size, date with manual choice and skip.",
+    "src/photos/import.ts: importFiles honours the ids map, plus a helper that reads Candidate metadata of a File without writing previews.",
+    "src/ui/SpreadView.tsx: a cell whose photo has no preview shows a grey box with the file name and a button 'Знайти фото'.",
+    "src/ui/Banners.tsx (new): storage-error banner from autosaver onError with 'Зберегти у файл'; iPhone non-standalone banner, closable, remembered in localStorage; backup banner when last file save > 3 days old AND updatedAt after it, with 'Зберегти у файл'; print warnings summary.",
+    "A file save writes lastFileSaveAt through store.replace.",
+    "App.tsx/AlbumList.tsx: open layout file; existing id asks 'Замінити наявний альбом?'; cancel leaves the album unchanged; missing = photos without previews (hasPreviews).",
+    "Editor.tsx mounts Banners and RelinkDialog, tracks the missing set and refreshes it after relink; previews.ts invalidates the cache after relink.",
+    "PhotoPanel.tsx marks missing photos and offers relink; ExportDialog.tsx small reuse change; strings.ts holds all new strings; styles.css grey box and banner styles.",
+    "vite.config.ts: VitePWA({ registerType 'autoUpdate', manifest name 'Конструктор альбому', short_name 'Альбом', display 'standalone', theme_color '#f4efe6', icons 192/512 }); base process.env.BASE_PATH ?? '/'. vite-plugin-pwa must be a devDependency (package.json not in the file list, so check it is already there).",
+    "public/icon-192.png, public/icon-512.png new.",
+    ".github/workflows/pages.yml: Node 24, npm ci, npm test, build with BASE_PATH=/${{ github.event.repository.name }}/, upload-pages-artifact, deploy-pages.",
+    "README.md STE-flavoured: what, run, deploy, Gramofon notes.",
+    "playwright.config.ts: expect timeout 15_000; pwa.spec builds and serves the production build itself or via config.",
+    "relink.spec.ts: save layout, empty browser, open file, grey boxes, relink land-*; dup-a/dup-b by colour; replace confirmation; QuotaExceededError put; clock 4 days -> backup banner. pwa.spec.ts: iPhone banner close+reload; service worker + setOffline(true) + reload.",
+    "Risks to check: backup banner needs both conditions; cancel on replace must not mutate; duplicate-name relink to the right cells; no service worker in dev; window.__store only in dev."
+  ],
+  "divergences": [
+    {
+      "expected": "package.json changes to add vite-plugin-pwa",
+      "found": "package.json is unchanged in this phase; vite-plugin-pwa ^2.0.0 is already a devDependency from the scaffold commit aef5763 and is installed in node_modules",
+      "explained_by_plan": true,
+      "plan_quote": "Configure `vite-plugin-pwa`: name \"Конструктор альбому\" ... (package.json is not in the Phase 8 Files list; the dependency predates the phase)"
+    },
+    {
+      "expected": "playwright.config.ts gets a vite preview webServer or project for the PWA test",
+      "found": "playwright.config.ts only adds expect: { timeout: 15_000 }; tests/e2e/pwa.spec.ts calls vite build() and preview() itself on port 5310 into a temp outDir",
+      "explained_by_plan": true,
+      "plan_quote": "`playwright.config.ts` sets `expect: { timeout: 15_000 }`. ... The production build served by `vite preview` registers a service worker and opens offline after one online visit."
+    },
+    {
+      "expected": "backup banner counts only from the last file save",
+      "found": "Banners.tsx needsBackup uses lastFileSaveAt ?? createdAt, so an album never saved to a file counts from its creation; the banner needs now - since > 3 days AND updatedAt > since",
+      "explained_by_plan": true,
+      "plan_quote": "(3) no file save for more than 3 days and changes after it, with \"Зберегти у файл\""
+    },
+    {
+      "expected": "relink only through RelinkDialog from the grey box",
+      "found": "PhotoPanel.tsx also shows a missing-bar with 'Знайти фото' for all missing photos (data-testid find-missing), and Banners.tsx exports a separate PrintSummary rendered below the spread",
+      "explained_by_plan": true,
+      "plan_quote": "`src/ui/PhotoPanel.tsx` (modify) ... (4) a short print warnings summary."
+    }
+  ],
+  "acceptance": [
+    { "id": "AC-8.1", "result": "pass", "command": "npx playwright test tests/e2e/relink.spec.ts tests/e2e/pwa.spec.ts", "exit_code": 0, "evidence": "runner tail: '3 skipped', '15 passed (12.4s)'; includes [mobile-webkit] pwa.spec.ts:10 iPhone banner ok, [desktop-chromium] pwa.spec.ts:33 service worker offline ok (4.2s), relink.spec.ts:99/144/169/197/216/233 ok on both projects. Skips are by design (iPhone test on desktop, desktop test on webkit, SW test on webkit)." },
+    { "id": "AC-8.2", "result": "pass", "command": "BASE_PATH=/album-builder/ npm run build", "exit_code": 0, "evidence": "runner tail: 'PWA v2.0.0', 'mode generateSW', 'files generated dist/sw.js'. Caveat: the runner shell is Git Bash on Windows, so MSYS path conversion turned BASE_PATH into 'C:/Program Files/Git/album-builder/' (Vite warned '\"base\" option should start with a slash'; dist/index.html had src=\"/Program Files/Git/album-builder/assets/...\"). I re-ran with MSYS_NO_PATHCONV=1 BASE_PATH=/album-builder/ npm run build: exit 0, dist/index.html src=\"/album-builder/assets/index-J2V0DE1K.js\", manifest start_url and scope \"/album-builder/\". The code is correct; the contract row as written proves less on this host." },
+    { "id": "AC-8.3", "result": "pass", "command": "git grep --untracked -n -E \"dup-b\" -- tests/e2e/relink.spec.ts", "exit_code": 0, "evidence": "3 matches; tests/e2e/relink.spec.ts:7 const DUP_B = join(FIXTURES, 'dup-b', 'IMG_0001.jpg');" },
+    { "id": "AC-8.4", "result": "pass", "command": "git grep --untracked -n -E \"['\\\"]QuotaExceededError['\\\"]\" -- tests/e2e/relink.spec.ts tests/e2e/pwa.spec.ts", "exit_code": 0, "evidence": "1 match; tests/e2e/relink.spec.ts:203 throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');" },
+    { "id": "AC-8.5", "result": "pass", "command": "git grep --untracked -n -E \"clock\\.(install|setFixedTime|setSystemTime|fastForward|runFor)\\(\" -- tests/e2e/relink.spec.ts tests/e2e/pwa.spec.ts", "exit_code": 0, "evidence": "6 matches; tests/e2e/relink.spec.ts:217 page.clock.install(); :223 page.clock.fastForward(96 * HOUR_MS);" },
+    { "id": "AC-8.6", "result": "pass", "command": "git grep --untracked -n -E \"['\\\"]mobile-webkit['\\\"]|userAgent:\" -- tests/e2e/relink.spec.ts tests/e2e/pwa.spec.ts", "exit_code": 0, "evidence": "1 match; tests/e2e/pwa.spec.ts:11 test.skip(testInfo.project.name !== 'mobile-webkit', ...); the test also asserts navigator.userAgent contains 'iPhone'." },
+    { "id": "AC-8.7", "result": "pass", "command": "git grep --untracked -n -E \"setOffline\\(true\\)|offline:\\s*true\" -- tests/e2e/pwa.spec.ts", "exit_code": 0, "evidence": "1 match; tests/e2e/pwa.spec.ts:52 await context.setOffline(true);" },
+    { "id": "AC-8.8", "result": "pass", "command": "git grep --untracked -n -E \"VitePWA\\(\" -- vite.config.ts", "exit_code": 0, "evidence": "1 match; vite.config.ts:11 VitePWA({" },
+    { "id": "AC-8.9", "result": "pass", "command": "git grep --untracked -n -E \"display:\\s*['\\\"]standalone['\\\"]\" -- vite.config.ts", "exit_code": 0, "evidence": "1 match; vite.config.ts:18 display: 'standalone'," },
+    { "id": "AC-8.10", "result": "pass", "command": "git grep --untracked -n -E \"process\\.env\\.BASE_PATH\\s*\\?\\?\\s*['\\\"]/['\\\"]\" -- vite.config.ts", "exit_code": 0, "evidence": "1 match; vite.config.ts:7 base: process.env.BASE_PATH ?? '/'," },
+    { "id": "AC-8.11", "result": "pass", "command": "git grep --untracked -n -E \"uses:\\s*actions/deploy-pages@\" -- .github/workflows/pages.yml", "exit_code": 0, "evidence": "1 match; .github/workflows/pages.yml:48 uses: actions/deploy-pages@v4" },
+    { "id": "AC-8.12", "result": "pass", "command": "git grep --untracked -n -E \"uses:\\s*actions/upload-pages-artifact@\" -- .github/workflows/pages.yml", "exit_code": 0, "evidence": "1 match; .github/workflows/pages.yml:36 - uses: actions/upload-pages-artifact@v4" },
+    { "id": "AC-8.13", "result": "pass", "command": "git grep --untracked -n -E \"BASE_PATH.*github\\.event\\.repository\\.name\" -- .github/workflows/pages.yml", "exit_code": 0, "evidence": "1 match; .github/workflows/pages.yml:34 BASE_PATH: /${{ github.event.repository.name }}/" },
+    { "id": "AC-8.14", "result": "pass", "command": "git grep --untracked -n -E \"run:\\s*npm test\" -- .github/workflows/pages.yml", "exit_code": 0, "evidence": "1 match; .github/workflows/pages.yml:30 - run: npm test (before the Build step at :31-34)" },
+    { "id": "AC-8.15", "result": "pass", "command": "git grep --untracked -n -E \"node-version:\\s*['\\\"]?24\" -- .github/workflows/pages.yml", "exit_code": 0, "evidence": "1 match; .github/workflows/pages.yml:27 node-version: 24" },
+    { "id": "AC-8.16", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-8 owes the proof. Static support: App.tsx openFile -> openSession(album, true); Editor.tsx hasPreviews sets missing; SpreadView.tsx missing-<id> grey box with find-photo button." },
+    { "id": "AC-8.17", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-8 owes the proof. Static support: RelinkDialog.tsx run() -> matchPhotos -> importFiles(files, ..., ids) under existing ids; Editor.tsx relinked() -> forgetPreviews." },
+    { "id": "AC-8.18", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-8 owes the proof. e2e relink.spec.ts:144 passes on both projects (colour check)." },
+    { "id": "AC-8.19", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-8 owes the proof. Static support: App.tsx 'if (existing && !confirm(strings.confirmReplaceAlbum(existing.name))) return;' before session close." },
+    { "id": "AC-8.20", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-8 owes the proof. Static support: App.tsx saver.onError -> storageError=true; Banners.tsx banner-storage-error with banner-storage-error-save." },
+    { "id": "AC-8.21", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-8 owes the proof. Note: the e2e test (relink.spec.ts:216) does not save to a file first; it counts from createdAt. The 'saved then edited' path is covered statically by needsBackup (lastFileSaveAt ?? createdAt)." },
+    { "id": "AC-8.22", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-8 owes the proof. e2e pwa.spec.ts:10 passes on mobile-webkit." },
+    { "id": "AC-8.23", "result": "delegated_to_probe", "evidence": "browser kind, non-blocking; needs the production build under vite preview, which the probe dev-server runtime cannot provide. e2e pwa.spec.ts:33 passes on desktop-chromium (service worker controller, setOffline(true), reload shows album-list)." },
+    { "id": "AC-8.24", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-8 owes the proof. e2e relink.spec.ts:99 asserts no request to a foreign origin during open and relink." },
+    { "id": "AC-8.25", "result": "manual", "reason_not_automatable": "The plan defers the creation of the GitHub repository and the first deployment until the user names the repository (Phase 8 Completion Criterion, line 469). No address exists to open yet.", "evidence": "manual; non-blocking; no deployment exists." }
+  ],
+  "gates": [
+    { "name": "build_command", "command": "npm run build", "exit_code": 0, "tail": "PWA v2.0.0 / mode generateSW / precache 8 entries (178.32 KiB) / files generated dist/sw.js dist/workbox-9c191d2f.js" },
+    { "name": "type_check_command", "command": "npm run typecheck", "exit_code": 0, "tail": "> album-builder@0.1.0 typecheck / > tsc --noEmit (no errors)" },
+    { "name": "test_command", "command": "npm test && npm run e2e", "exit_code": 0, "tail": "Test Files 11 passed (11); Tests 77 passed (77); Playwright: 7 skipped, 67 passed (37.1s)" }
+  ],
+  "consumers": [
+    { "symbol": "SpreadView props (missing, onFindPhoto added)", "call_sites": ["src/ui/Editor.tsx:134"], "all_updated": true },
+    { "symbol": "CellPhoto (signature unchanged)", "call_sites": ["src/ui/PreviewMode.tsx:116", "src/ui/SpreadView.tsx:184"], "all_updated": true },
+    { "symbol": "PhotoPanel props (missing, onFindPhotos added)", "call_sites": ["src/ui/Editor.tsx:161"], "all_updated": true },
+    { "symbol": "AlbumList props (onOpenFile)", "call_sites": ["src/ui/App.tsx:141"], "all_updated": true },
+    { "symbol": "Editor props (storageError, onOpenFile)", "call_sites": ["src/ui/App.tsx:128"], "all_updated": true },
+    { "symbol": "importFiles(files, onProgress, ids?)", "call_sites": ["src/ui/PhotoPanel.tsx:75", "src/ui/RelinkDialog.tsx:36", "src/harness.ts:23"], "all_updated": true },
+    { "symbol": "describeFile, DECODE_LIMIT (new exports)", "call_sites": ["src/ui/ExportDialog.tsx:77", "src/ui/RelinkDialog.tsx:51-52"], "all_updated": true },
+    { "symbol": "forgetPreviews (new) / usePreviewUrl (signature unchanged, now re-loads on forget)", "call_sites": ["src/ui/Editor.tsx:119", "src/ui/SpreadView.tsx:46", "src/ui/SpreadStrip.tsx:13", "src/ui/PhotoPanel.tsx:17"], "all_updated": true },
+    { "symbol": "Banners, PrintSummary, RelinkDialog (new)", "call_sites": ["src/ui/Editor.tsx:133", "src/ui/Editor.tsx:160", "src/ui/Editor.tsx:169"], "all_updated": true }
+  ],
+  "removed_behavior": [
+    "vite.config.ts: 'plugins: [preact()]' replaced by 'plugins: [preact(), VitePWA({...})]'. preact() is kept; nothing is lost. The dev server builds no service worker (VitePWA devOptions not enabled), so the dev-server e2e suite is unaffected (67 passed).",
+    "playwright.config.ts: no '-' lines; only the expect timeout was added.",
+    "The 12 src files marked 'existed untracked before this phase with DIFFERENT bytes' are shown in full with no pre-phase baseline, so their removed lines cannot be read from the bundle. The full e2e and unit suites from earlier phases pass on the final tree (77 unit, 67 e2e), which is the available evidence that no earlier behavior was lost."
+  ],
+  "blockers": [],
+  "fail_first": {
+    "present": false,
+    "skipped_reason": "The bundle gives no pre-implementation run of relink.spec.ts or pwa.spec.ts; the tests and the code arrive in the same phase.",
+    "evidence_path": null,
+    "failure_was_assertion": null
+  }
+}

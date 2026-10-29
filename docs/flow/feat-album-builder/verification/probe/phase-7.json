@@ -1,0 +1,229 @@
+{
+  "phase": 7,
+  "feature": "feat-album-builder",
+  "base": "fafa4154fec507cb3e46ecccc3e9daf562f3dbf7",
+  "evidence_sha256": "c79d95bb36061269020b657eef23c215229eccd8c7143c4abccbe17946fae6c5",
+  "probe_kind": "browser",
+  "outcome": "pass",
+  "server": {
+    "started": true,
+    "ready_ms": 83,
+    "port": 5173,
+    "port_source": "declared",
+    "base_url": "http://localhost:5173",
+    "note": "Started with 'npm run dev -- --port 5173 --strictPort' from D:\\personal\\Photo\\composition; Vite announced http://localhost:5173/. Stopped with TaskStop and doctor.mjs stop (free_after: true). The Vite log shows one 'file watcher error: EBUSY' on .devflow/evidence/feat-album-builder/AC-7.20.zip while Playwright saved the download into the watched project tree; this is a server-side watcher message, not a browser console error or a 5xx. AC-7.23 ran in a separate headless Playwright WebKit 27.2 instance with devices['iPhone 13'] against the same server; all other checks ran in the MCP Chromium page."
+  },
+  "preconditions": [
+    {
+      "what": "The phase-7 export dialog exists: in a new album, the top-bar button data-testid=action-export opens data-testid=export-dialog titled 'Експорт для друку' with the options 'Розвороти цілком (файлів: 15)' and 'Окремі сторінки (файлів: 30)'",
+      "held": true,
+      "evidence": "browser_run_code result: {title: 'Експорт для друку', kinds: [export-kind-spreads (15), export-kind-pages (30)]}"
+    }
+  ],
+  "checks": [
+    {
+      "id": "AC-7.16",
+      "result": "pass",
+      "assertions": [
+        {
+          "then": "a warning names the page count 22 and the minimum of 24",
+          "actual": "Given: new album, 4 of 15 non-cover spreads removed (11 left). warning-min-pages: 'Сторінок для друку: 22. Потрібно щонайменше 24.' Options read 'файлів: 11' and 'файлів: 22', so the cover is not counted.",
+          "ok": true
+        }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-album-builder/AC-7.16.png",
+        ".devflow/evidence/feat-album-builder/AC-7.16.console.log",
+        ".devflow/evidence/feat-album-builder/AC-7.16.net.log"
+      ]
+    },
+    {
+      "id": "AC-7.17",
+      "result": "pass",
+      "assertions": [
+        {
+          "then": "a warning names the low-dpi cell on spread 1",
+          "actual": "land-1.jpg imported through the add-photos file chooser and placed on spread 1, template full. warning-low-dpi: 'Низька якість: розворот 1, комірка 1 — 75 dpi (потрібно щонайменше 200).'",
+          "ok": true
+        },
+        {
+          "then": "a warning names the empty cell on spread 2",
+          "actual": "warning-empty-cell: 'Порожня комірка: розворот 2, комірка 1.' (15 warnings in total, the other 13 are the empty cells of spreads 3-15)",
+          "ok": true
+        }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-album-builder/AC-7.17.png",
+        ".devflow/evidence/feat-album-builder/AC-7.17.console.log",
+        ".devflow/evidence/feat-album-builder/AC-7.17.net.log"
+      ]
+    },
+    {
+      "id": "AC-7.18",
+      "result": "pass",
+      "assertions": [
+        {
+          "then": "a warning names the photo on the half that is not printed",
+          "actual": "Book start set in the Settings dialog to 'Сторінка 1 — окрема права сторінка' (settings.bookStart = single-right); land-1.jpg in cell 1 (left half) of spread 1, template two. warning-unprinted-photo: 'Фото на половині, що не друкується: розворот 1, комірка 1.'",
+          "ok": true
+        },
+        {
+          "then": "a warning names the missing photo",
+          "actual": "A photo meta 'ghost-from-layout.jpg' with no stored preview and no original was added through the store (addPhotos) and placed on spread 2, which is the state a layout file opened without its photos produces. warning-missing-photo: 'Немає фото: ghost-from-layout.jpg.'",
+          "ok": true
+        }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-album-builder/AC-7.18.png",
+        ".devflow/evidence/feat-album-builder/AC-7.18.console.log",
+        ".devflow/evidence/feat-album-builder/AC-7.18.net.log"
+      ]
+    },
+    {
+      "id": "AC-7.19",
+      "result": "pass",
+      "assertions": [
+        {
+          "then": "showDirectoryPicker is called with mode readwrite",
+          "actual": "Page-side stub recorded exactly one call with {mode: 'readwrite'}; it returned an in-memory folder, and the export wrote export-Новий альбом/spreads/spread-01.jpg, pages/page-001.jpg, pages/page-002.jpg into it; data-testid=export-done appeared.",
+          "ok": true
+        },
+        {
+          "then": "no ZIP download starts",
+          "actual": "page 'download' listener recorded 0 downloads through export-done.",
+          "ok": true
+        }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-album-builder/AC-7.19.png",
+        ".devflow/evidence/feat-album-builder/AC-7.19.console.log",
+        ".devflow/evidence/feat-album-builder/AC-7.19.net.log"
+      ]
+    },
+    {
+      "id": "AC-7.20",
+      "result": "pass",
+      "assertions": [
+        {
+          "then": "one .zip file downloads",
+          "actual": "With an init script deleting window.showDirectoryPicker before load ('showDirectoryPicker' in window = false), one download 'export-Новий альбом.zip' in 7.3 s; export-done shown.",
+          "ok": true
+        },
+        {
+          "then": "spreads/spread-01.jpg is 7157x3614 px and its header gives 300 dpi",
+          "actual": "spread-01.jpg: 7157x3614, APP0 JFIF units=1 density 300x300. All 15 spreads 7157x3614, all 45 files JFIF 1:300x300.",
+          "ok": true
+        },
+        {
+          "then": "pages/page-001.jpg is 3614x3614 px",
+          "actual": "page-001.jpg: 3614x3614 (all 30 pages 3614x3614)",
+          "ok": true
+        },
+        {
+          "then": "no file in the ZIP is the cover",
+          "actual": "45 entries = spreads/spread-01..15 + pages/page-001..030; no cover entry; the album has 16 spreads including the cover.",
+          "ok": true
+        }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-album-builder/AC-7.20.png",
+        ".devflow/evidence/feat-album-builder/AC-7.20.console.log",
+        ".devflow/evidence/feat-album-builder/AC-7.20.net.log",
+        ".devflow/evidence/feat-album-builder/AC-7.20.zip",
+        ".devflow/evidence/feat-album-builder/AC-7.20.zip.log"
+      ]
+    },
+    {
+      "id": "AC-7.21",
+      "result": "pass",
+      "assertions": [
+        {
+          "then": "the bleed on the fold side of each page holds the image of the neighbouring page",
+          "actual": "Decoded page-001 and page-002 of the AC-7.20 ZIP. The 71 px (6 mm) fold-side strip of page-001 vs the same-mm strip of page-002: mean abs diff 0.04 per channel; vs a mirrored strip 5.69; vs the outer edge 40.3; background-colour (#f4efe6) fraction 0 in both strips.",
+          "ok": true
+        }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-album-builder/AC-7.21.png",
+        ".devflow/evidence/feat-album-builder/AC-7.21.console.log",
+        ".devflow/evidence/feat-album-builder/AC-7.21.net.log",
+        ".devflow/evidence/feat-album-builder/AC-7.21.seam.log"
+      ]
+    },
+    {
+      "id": "AC-7.22",
+      "result": "pass",
+      "assertions": [
+        {
+          "then": "the app asks the user to choose the original files",
+          "actual": "After a full page load of the album from AC-7.20 (originals no longer in memory), export-start gave export-need-originals: 'Для експорту потрібні оригінальні файли фото (1). Оберіть їх.' No export-error.",
+          "ok": true
+        },
+        {
+          "then": "after the choice the export completes",
+          "actual": "export-choose-originals -> file chooser -> land-1.jpg -> 'Оригінали знайдено.' -> export-continue -> one ZIP download, export-done. 45 entries, same sizes; spread-01.jpg byte-identical (sha256 prefix 4a4a2894e85b0a2e) to the AC-7.20 export, so the cells are not blank.",
+          "ok": true
+        }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-album-builder/AC-7.22.png",
+        ".devflow/evidence/feat-album-builder/AC-7.22.console.log",
+        ".devflow/evidence/feat-album-builder/AC-7.22.net.log",
+        ".devflow/evidence/feat-album-builder/AC-7.22.zip",
+        ".devflow/evidence/feat-album-builder/AC-7.22.zip.log"
+      ]
+    },
+    {
+      "id": "AC-7.23",
+      "result": "pass",
+      "assertions": [
+        {
+          "then": "a note says that full-quality export of whole spreads works on a computer",
+          "actual": "WebKit 27.2, devices['iPhone 13'] (editor class 'editor mobile', pointer coarse). export-phone-note: 'На телефоні можна експортувати лише окремі сторінки. Повноякісний експорт цілих розворотів працює на комп’ютері.'",
+          "ok": true
+        },
+        {
+          "then": "only the pages option is offered",
+          "actual": "export-kind-* = ['export-kind-pages: Окремі сторінки (файлів: 30)'] only",
+          "ok": true
+        }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-album-builder/AC-7.23.png",
+        ".devflow/evidence/feat-album-builder/AC-7.23.console.log",
+        ".devflow/evidence/feat-album-builder/AC-7.23.net.log"
+      ]
+    },
+    {
+      "id": "AC-7.24",
+      "result": "pass",
+      "assertions": [
+        {
+          "then": "every request in the network log goes to the app origin",
+          "actual": "Network log of the AC-7.20 page from load through the ZIP export (static included): 59 requests, 55 to http://localhost:5173 and 4 to blob:http://localhost:5173/...; no other origin.",
+          "ok": true
+        }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-album-builder/AC-7.24.png",
+        ".devflow/evidence/feat-album-builder/AC-7.24.console.log",
+        ".devflow/evidence/feat-album-builder/AC-7.24.net.log"
+      ]
+    }
+  ],
+  "regression_sweep": [
+    { "surface": "album list (‹ Альбоми): list loads and an older album opens in the editor", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "Settings dialog (Налаштування): open and close", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "Preview mode (Перегляд): open and close", "tripwire_clean": true, "console_errors": [] }
+  ],
+  "lessons_fired": []
+}

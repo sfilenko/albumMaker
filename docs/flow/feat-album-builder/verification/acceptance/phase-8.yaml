@@ -1,0 +1,331 @@
+phase: 8
+feature: feat-album-builder
+source: "Phase 8 Completion Criterion, .devflow/plan.md lines 461-469; Phase 8 steps 1, 5 and 6 (lines 453-458); the Edge Cases table row E-9 (line 483); and the brief's How-it-will-be-observed column for R-27, R-39 to R-44"
+checks:
+  - id: AC-8.1
+    kind: unit
+    intent: the Phase 8 end-to-end tests pass
+    run: npx playwright test tests/e2e/relink.spec.ts tests/e2e/pwa.spec.ts
+    expect: exit == 0
+    falsifier: >
+      If either file is missing, or a case fails (for example the backup banner does not
+      show 4 days after an edit), Playwright exits non-zero.
+    blocking: true
+
+  - id: AC-8.2
+    kind: command
+    intent: the production build with the GitHub Pages base path succeeds
+    run: BASE_PATH=/album-builder/ npm run build
+    expect: exit == 0
+    falsifier: >
+      If the PWA plugin, the icons or the base path break the production build, it exits
+      non-zero.
+    covers: [brief:R-42, brief:R-43]
+    blocking: true
+
+  - id: AC-8.3
+    kind: grep
+    intent: relink.spec.ts uses the dup-a and dup-b fixtures (both IMG_0001.jpg relink to the right cells)
+    run: git grep --untracked -n -E "dup-b" -- tests/e2e/relink.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If relink.spec.ts never chooses the dup-b file, the duplicate-name relink is not
+      tested and this reads 0.
+    covers: [brief:E-2]
+    blocking: true
+
+  - id: AC-8.4
+    kind: grep
+    intent: a Phase 8 test makes IndexedDB put throw QuotaExceededError (the storage error banner shows)
+    run: git grep --untracked -n -E "['\"]QuotaExceededError['\"]" -- tests/e2e/relink.spec.ts tests/e2e/pwa.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If no Phase 8 test makes storage fail, the storage error banner is not tested and this
+      reads 0.
+    covers: [brief:R-41, brief:E-5]
+    blocking: true
+
+  - id: AC-8.5
+    kind: grep
+    intent: a Phase 8 test moves the clock forward (the backup banner shows 4 days after an edit)
+    run: git grep --untracked -n -E "clock\.(install|setFixedTime|setSystemTime|fastForward|runFor)\(" -- tests/e2e/relink.spec.ts tests/e2e/pwa.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If no Phase 8 test moves the clock, the 3-day rule of the backup banner is not tested
+      and this reads 0.
+    covers: [brief:R-40]
+    blocking: true
+
+  - id: AC-8.6
+    kind: grep
+    intent: a Phase 8 test sets an iPhone user agent (the home-screen banner shows, and stays closed after close and reload)
+    run: git grep --untracked -n -E "['\"]mobile-webkit['\"]|userAgent:" -- tests/e2e/relink.spec.ts tests/e2e/pwa.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If no Phase 8 test runs as iPhone Safari, the home-screen banner is not tested and
+      this reads 0.
+    covers: [brief:R-39]
+    blocking: true
+
+  - id: AC-8.7
+    kind: grep
+    intent: pwa.spec.ts goes offline (the production build opens offline after one online visit)
+    run: git grep --untracked -n -E "setOffline\(true\)|offline:\s*true" -- tests/e2e/pwa.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If pwa.spec.ts never goes offline, the offline start is not tested and this reads 0.
+    covers: [brief:R-42]
+    blocking: true
+
+  - id: AC-8.8
+    kind: grep
+    intent: vite.config.ts registers vite-plugin-pwa
+    run: git grep --untracked -n -E "VitePWA\(" -- vite.config.ts
+    expect: matches >= 1
+    falsifier: >
+      If the PWA plugin is imported but not called in plugins, no manifest and no service
+      worker are built, and this reads 0.
+    covers: [brief:R-42]
+    blocking: true
+
+  - id: AC-8.9
+    kind: grep
+    intent: the PWA manifest uses display standalone (the app installs to the Home Screen)
+    run: git grep --untracked -n -E "display:\s*['\"]standalone['\"]" -- vite.config.ts
+    expect: matches >= 1
+    falsifier: >
+      If the manifest has no display value or a value other than standalone, this reads 0.
+    covers: [brief:R-39, brief:R-42]
+    blocking: true
+
+  - id: AC-8.10
+    kind: grep
+    intent: the base path comes from BASE_PATH with the fallback slash
+    run: git grep --untracked -n -E "process\.env\.BASE_PATH\s*\?\?\s*['\"]/['\"]" -- vite.config.ts
+    expect: matches >= 1
+    falsifier: >
+      If the base is fixed to one path, a build for GitHub Pages or for local use breaks,
+      and this reads 0.
+    covers: [brief:R-43]
+    blocking: true
+
+  - id: AC-8.11
+    kind: grep
+    intent: the Pages workflow deploys with actions/deploy-pages
+    run: git grep --untracked -n -E "uses:\s*actions/deploy-pages@" -- .github/workflows/pages.yml
+    expect: matches >= 1
+    falsifier: >
+      If the workflow has no deploy-pages step, nothing publishes the site, and this reads 0.
+    covers: [brief:R-43]
+    blocking: true
+
+  - id: AC-8.12
+    kind: grep
+    intent: the Pages workflow uploads the build with actions/upload-pages-artifact
+    run: git grep --untracked -n -E "uses:\s*actions/upload-pages-artifact@" -- .github/workflows/pages.yml
+    expect: matches >= 1
+    falsifier: >
+      If the workflow has no upload-pages-artifact step, deploy-pages has nothing to deploy,
+      and this reads 0.
+    covers: [brief:R-43]
+    blocking: true
+
+  - id: AC-8.13
+    kind: grep
+    intent: the Pages workflow builds with BASE_PATH set to the repository name
+    run: git grep --untracked -n -E "BASE_PATH.*github\.event\.repository\.name" -- .github/workflows/pages.yml
+    expect: matches >= 1
+    falsifier: >
+      If the workflow builds with the default base slash, every asset URL on the Pages site
+      is wrong, and this reads 0.
+    covers: [brief:R-43]
+    blocking: true
+
+  - id: AC-8.14
+    kind: grep
+    intent: the Pages workflow runs npm test before the build
+    run: git grep --untracked -n -E "run:\s*npm test" -- .github/workflows/pages.yml
+    expect: matches >= 1
+    falsifier: >
+      If the workflow deploys without running the unit tests, this reads 0.
+    covers: [brief:R-43]
+    blocking: true
+
+  - id: AC-8.15
+    kind: grep
+    intent: the Pages workflow uses Node 24
+    run: git grep --untracked -n -E "node-version:\s*['\"]?24" -- .github/workflows/pages.yml
+    expect: matches >= 1
+    falsifier: >
+      If the workflow uses another Node version or none, this reads 0.
+    covers: [brief:R-43]
+    blocking: true
+
+  - id: AC-8.16
+    kind: browser
+    intent: a layout file opened in an empty browser brings the spreads back, with grey boxes for the photos it cannot find
+    given: >
+      an album with the land fixtures placed, saved with Зберегти у файл; then IndexedDB
+      cleared for the origin
+    when: >
+      open the saved .album.json file
+    then:
+      - all spreads, templates and settings come back
+      - each placed cell shows a grey box with its file name and a button Знайти фото
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If a spread is missing, a cell is empty, or a missing photo is deleted from the layout
+      instead of shown as a grey box, this fails.
+    covers: [brief:R-26, brief:R-27]
+    blocking: true
+
+  - id: AC-8.17
+    kind: browser
+    intent: a relink with the land fixtures shows the photos again in their cells
+    given: the layout of AC-8.16, with grey boxes in its cells
+    when: >
+      open the relink dialog and choose the land fixture files
+    then:
+      - every grey box shows its photo again
+      - each photo is in the same cell as before the save
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If a photo lands in a different cell, or a grey box stays after its file was chosen,
+      this fails.
+    covers: [brief:R-27]
+    blocking: true
+
+  - id: AC-8.18
+    kind: browser
+    intent: two photos with the same file name relink to the right cells
+    given: >
+      a layout with dup-a/IMG_0001.jpg in cell 0 and dup-b/IMG_0001.jpg in cell 1, saved to a
+      file and opened in an empty browser
+    when: >
+      relink with both IMG_0001.jpg files
+    then:
+      - cell 0 shows the dup-a photo (hue 120, label A)
+      - cell 1 shows the dup-b photo (hue 300, label B)
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the two photos are swapped, or one cell shows the same photo as the other, this
+      fails.
+    covers: [brief:E-2]
+    blocking: true
+
+  - id: AC-8.19
+    kind: browser
+    intent: a layout file whose album exists in this browser asks before it replaces anything
+    given: an album saved with Зберегти у файл and still in this browser
+    when: >
+      open the same .album.json file
+    then:
+      - the app asks Замінити наявний альбом?
+      - a cancel leaves the album as it was
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the album is replaced without the question, or a cancel still changes it, this
+      fails.
+    covers: [brief:E-9]
+    blocking: true
+
+  - id: AC-8.20
+    kind: browser
+    intent: a storage failure shows the error banner with Зберегти у файл
+    given: an album open, then IDBObjectStore.prototype.put made to throw QuotaExceededError
+    when: >
+      make an edit (place a photo)
+    then:
+      - a banner shows a storage error
+      - the banner has the button Зберегти у файл
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the edit fails silently, or the banner has no save button, this fails.
+    covers: [brief:R-41, brief:E-5]
+    blocking: true
+
+  - id: AC-8.21
+    kind: browser
+    intent: the backup banner shows when the last file save is more than 3 days old and the album changed after it
+    given: an album saved to a file, then edited, then the page clock moved 4 days forward
+    when: >
+      reload and look at the editor
+    then:
+      - a banner reminds the user to save, with the button Зберегти у файл
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the banner does not show, or shows when nothing changed after the last save, this
+      fails.
+    covers: [brief:R-40]
+    blocking: true
+
+  - id: AC-8.22
+    kind: browser
+    intent: iPhone Safari outside the Home Screen shows the install banner, and it stays closed after close and reload
+    given: the mobile-webkit browser with an iPhone user agent, not in standalone mode
+    when: >
+      open the app, close the banner, then reload
+    then:
+      - the home-screen banner shows on the first visit
+      - after close and reload it does not show
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the banner never shows on iPhone, cannot be closed, or comes back after the reload,
+      this fails.
+    covers: [brief:R-39]
+    blocking: true
+
+  - id: AC-8.23
+    kind: browser
+    intent: after one online visit the production build opens offline
+    given: >
+      the production build served by vite preview (the probe runtime starts the dev server,
+      which builds no service worker, so this row cannot run there)
+    when: >
+      open the app once online, then go offline and reload
+    then:
+      - a service worker is registered
+      - the app opens offline and shows the album list
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If no service worker registers, or the offline reload shows a browser error page,
+      this fails.
+    covers: [brief:R-42]
+    blocking: false
+
+  - id: AC-8.24
+    kind: browser
+    intent: import, editing and relink make no network request to another origin
+    given: desktop Chromium, the network log recording from the page load
+    when: >
+      import the fixtures, place photos, change a template, save a layout file and relink
+    then:
+      - every request in the network log goes to the app origin
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If any request goes to another origin (an upload, a CDN script, a font or an
+      analytics call), this fails.
+    covers: [brief:R-44]
+    blocking: true
+
+  - id: AC-8.25
+    kind: manual
+    intent: GitHub Pages serves the app at one fixed address
+    reason_not_automatable: >
+      The plan defers the creation of the GitHub repository and the first deployment until
+      the user names the repository (Phase 8 Completion Criterion, line 469). No address
+      exists to open yet.
+    falsifier: >
+      If the deployed URL does not open the app, or the URL changes between two releases,
+      this fails.
+    covers: [brief:R-43]
+    blocking: false

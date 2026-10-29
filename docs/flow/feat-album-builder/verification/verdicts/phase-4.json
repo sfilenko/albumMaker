@@ -1,0 +1,91 @@
+{
+  "phase": 4,
+  "base": "f0e1fb0fff2c8f52af3dcad9a450f0636c69f5ed",
+  "feature": "feat-album-builder",
+  "evidence_sha256": "a18a448e4e043c9cc0a6cba6a770d0a4f18d5c120543f9ebaf8ac0f3eb46a81f",
+  "status": "pass",
+  "diff_stat": "src/main.tsx | 4 +++- ; 1 file changed, 3 insertions(+), 1 deletion(-) (plus 18 new untracked files, 10 of them in phase 4)",
+  "prediction": [
+    "src/ui/strings.ts: one exported `strings` object with Ukrainian values (Новий альбом, Фото, Шаблони, Розвороти, undo/redo, delete confirmation, not-printed label).",
+    "src/ui/App.tsx: start screen AlbumList; open album -> createAlbumStore, store.subscribe -> createAutosaver(saveAlbum).schedule, requestPersistence(), localStorage['lastAlbumId'] set on open and read on boot; window.__store only under import.meta.env.DEV; autosaver flush/dispose on close.",
+    "src/ui/AlbumList.tsx: listAlbums, create (createAlbum('Новий альбом') + saveAlbum), open, rename (renameAlbum + saveAlbum), delete with confirm() + deleteAlbum.",
+    "src/ui/Editor.tsx: 900px breakpoint; desktop grid photo-panel left, spread-view centre, template-panel right, spread-strip bottom, top bar with name, undo, redo, inactive buttons for later phases. Mobile: top bar with ‹ n / N ›, spread at full width, tabs Фото / Шаблони / Розвороти. Ctrl+Z undo, Ctrl+Shift+Z and Ctrl+Y redo.",
+    "src/ui/previews.ts: usePreviewUrl(photoId, kind) with a shared object-URL cache over getPreview.",
+    "src/ui/SpreadView.tsx: cells from cellRects with test id cell-<s>-<c>; image placed by sourceRect; background colour; guides when showGuides: bleed shading, 2 guide-safe, 1 guide-fold; sideIsPrinted -> greyed and labelled; gutters() -> hit areas >= 12 CSS px dispatching moveGutterOp with coalesce 'gutter'; click selects; no handle on template two.",
+    "src/ui/styles.css: layout grid and 900px rules. src/main.tsx: render <App/> and import styles.css.",
+    "tests/e2e/shell.spec.ts: create + rename + reload; last opened album reopens; desktop four ids visible; mobile spread-view + three tabs, Шаблони shows template-panel.",
+    "tests/e2e/spread.spec.ts: window.__store applyTemplate row3; drag first gutter 60px; cell 0 wider, cell 2 unchanged; Control+z restores; drag survives reload; template two -> 0 gutters; guide-safe 2, guide-fold 1; showGuides: false -> 0.",
+    "Consumers: all modules are new; main.tsx is the only modified consumer."
+  ],
+  "divergences": [
+    {
+      "expected": "Border drag dispatches moveGutterOp with the literal coalesce key 'gutter'.",
+      "found": "src/ui/SpreadView.tsx onBorderDown sets key `gutter:${e.timeStamp}`, so each drag gets its own coalesce key. The store (src/state/store.ts:42-46) merges every consecutive dispatch that shares one key, so the literal 'gutter' would merge two separate drags in a row into one undo step. A per-drag key keeps one drag = one undo step.",
+      "explained_by_plan": true,
+      "plan_quote": "On `row3`, a drag of the first border 60 CSS px to the right makes cell 0 wider and leaves cell 2 unchanged. One Ctrl+Z restores the widths."
+    },
+    {
+      "expected": "Editor renders the four panels, which can be placeholders until Phase 5.",
+      "found": "Editor.tsx imports the real PhotoPanel, TemplatePanel, SpreadStrip, CellToolbar and dnd (Phase 5 files present in the tree). SpreadView.tsx also has Phase 5 drag-and-drop, crop and low-dpi code.",
+      "explained_by_plan": true,
+      "plan_quote": "top bar with name, undo, redo and buttons that later phases connect"
+    },
+    {
+      "expected": "App connects store.subscribe to createAutosaver only.",
+      "found": "App.tsx also calls restoreBackups(saveAlbum) from src/storage/autosave.ts before it reads lastAlbumId. autosave.ts is attributed to Phase 2 by phasecheck (other_phase) and is out of scope for this phase.",
+      "explained_by_plan": true,
+      "plan_quote": "E-6 | Phase 2 | `flush` on `pagehide` and hidden `visibilitychange`. Unit test"
+    },
+    {
+      "expected": "lastAlbumId is kept so that a reload reopens the album.",
+      "found": "App.tsx onClose calls remember(null): when the user goes back to the album list, lastAlbumId is cleared, and a reload then shows the list. While an album is open, a reload reopens it (shell.spec.ts 'after reload, the last opened album opens' passes on both projects).",
+      "explained_by_plan": true,
+      "plan_quote": "keeps the album id in `localStorage['lastAlbumId']` to reopen it."
+    }
+  ],
+  "acceptance": [
+    {"id": "AC-4.1", "result": "pass", "command": "npx playwright test tests/e2e/shell.spec.ts tests/e2e/spread.spec.ts", "exit_code": 0, "evidence": "Runner tail: 'Running 14 tests using 8 workers' ... '14 passed (6.1s)'; all 7 cases ok on desktop-chromium and mobile-webkit."},
+    {"id": "AC-4.2", "result": "pass", "command": "git grep --untracked -n -E \"\\.reload\\(\" -- tests/e2e/shell.spec.ts", "exit_code": 0, "evidence": "4 matches: tests/e2e/shell.spec.ts:19, :26, :37, :54 'await page.reload();'"},
+    {"id": "AC-4.3", "result": "pass", "command": "git grep --untracked -n -E \"spread-strip['\\\"]\" -- tests/e2e/shell.spec.ts", "exit_code": 0, "evidence": "1 match: tests/e2e/shell.spec.ts:67 for (const id of ['photo-panel', 'spread-view', 'template-panel', 'spread-strip'])"},
+    {"id": "AC-4.4", "result": "pass", "command": "git grep --untracked -n -E \"['\\\"]row3['\\\"]\" -- tests/e2e/spread.spec.ts", "exit_code": 0, "evidence": "1 match: tests/e2e/spread.spec.ts:42 await setTemplate(page, 'row3');"},
+    {"id": "AC-4.5", "result": "pass", "command": "git grep --untracked -n -E \"Control\\+[zZ]\" -- tests/e2e/spread.spec.ts", "exit_code": 0, "evidence": "1 match: tests/e2e/spread.spec.ts:51 await page.keyboard.press('Control+z');"},
+    {"id": "AC-4.6", "result": "pass", "command": "git grep --untracked -n -E \"['\\\"]two['\\\"]\" -- tests/e2e/spread.spec.ts", "exit_code": 0, "evidence": "1 match: tests/e2e/spread.spec.ts:66 await setTemplate(page, 'two');"},
+    {"id": "AC-4.7", "result": "pass", "command": "git grep --untracked -n -E \"guide-fold['\\\"]\" -- tests/e2e/spread.spec.ts", "exit_code": 0, "evidence": "3 matches: tests/e2e/spread.spec.ts:74, :75, :82"},
+    {"id": "AC-4.8", "result": "pass", "command": "git grep --untracked -n -E \"showGuides:\\s*false\" -- tests/e2e/spread.spec.ts", "exit_code": 0, "evidence": "1 match: tests/e2e/spread.spec.ts:79 m.updateSettings(a, { showGuides: false })"},
+    {"id": "AC-4.9", "result": "delegated_to_probe", "evidence": "browser kind; owed by /df:probe phase-4 (two albums + rename survive reload)."},
+    {"id": "AC-4.10", "result": "delegated_to_probe", "evidence": "browser kind; owed by /df:probe phase-4 (deleted album stays gone after reload, with confirmation). Note: shell.spec.ts deletes from a one-album list only."},
+    {"id": "AC-4.11", "result": "delegated_to_probe", "evidence": "browser kind; owed by /df:probe phase-4 (last opened album B reopens)."},
+    {"id": "AC-4.12", "result": "delegated_to_probe", "evidence": "browser kind; owed by /df:probe phase-4 (four areas at 1280x800)."},
+    {"id": "AC-4.13", "result": "delegated_to_probe", "evidence": "browser kind; owed by /df:probe phase-4 (tab Фото on iPhone 13)."},
+    {"id": "AC-4.14", "result": "delegated_to_probe", "evidence": "browser kind; owed by /df:probe phase-4 (tab Шаблони on iPhone 13)."},
+    {"id": "AC-4.15", "result": "delegated_to_probe", "evidence": "browser kind; owed by /df:probe phase-4 (tab Розвороти on iPhone 13)."},
+    {"id": "AC-4.16", "result": "delegated_to_probe", "evidence": "browser kind; owed by /df:probe phase-4 (all visible text Ukrainian). Static: src/ui/strings.ts values are all Ukrainian."},
+    {"id": "AC-4.17", "result": "delegated_to_probe", "evidence": "browser kind; owed by /df:probe phase-4 (2 guide-safe, 1 guide-fold, bleed shaded)."},
+    {"id": "AC-4.18", "result": "delegated_to_probe", "evidence": "browser kind; owed by /df:probe phase-4 (row3 border drag 60px + one Ctrl+Z)."},
+    {"id": "AC-4.19", "result": "delegated_to_probe", "evidence": "browser kind; owed by /df:probe phase-4 (no fold handle on template two)."}
+  ],
+  "gates": [
+    {"name": "build_command", "command": "npm run build", "exit_code": 0, "tail": "tsc --noEmit && vite build ... dist/assets/index-DWHKidY4.js 136.50 kB | gzip: 49.67 kB; built in 65ms"},
+    {"name": "type_check_command", "command": "npm run typecheck", "exit_code": 0, "tail": "> tsc --noEmit (no output)"},
+    {"name": "test_command", "command": "npm test && npm run e2e", "exit_code": 0, "tail": "Vitest: Test Files 9 passed (9), Tests 69 passed (69). Playwright: 1 skipped, 39 passed (11.5s); the skip is crop.spec.ts:61 on mobile-webkit (no mouse wheel), a Phase 5 file."}
+  ],
+  "consumers": [
+    {"symbol": "App (src/ui/App.tsx)", "call_sites": ["src/main.tsx:2", "src/main.tsx:21"], "all_updated": true},
+    {"symbol": "AlbumList (src/ui/AlbumList.tsx)", "call_sites": ["src/ui/App.tsx:7"], "all_updated": true},
+    {"symbol": "Editor (src/ui/Editor.tsx)", "call_sites": ["src/ui/App.tsx:8"], "all_updated": true},
+    {"symbol": "SpreadView (src/ui/SpreadView.tsx)", "call_sites": ["src/ui/Editor.tsx:9"], "all_updated": true},
+    {"symbol": "usePreviewUrl (src/ui/previews.ts)", "call_sites": ["src/ui/SpreadView.tsx:13", "src/ui/PhotoPanel.tsx:11", "src/ui/SpreadStrip.tsx:9"], "all_updated": true},
+    {"symbol": "window.__store (declared in src/ui/App.tsx)", "call_sites": ["tests/e2e/shell.spec.ts", "tests/e2e/spread.spec.ts", "tests/e2e/dnd.spec.ts", "tests/e2e/crop.spec.ts"], "all_updated": true}
+  ],
+  "removed_behavior": [
+    "src/main.tsx: the placeholder render(<main>Конструктор альбому</main>, root) is replaced by render(<App />, root). The only dependent is tests/e2e/smoke.spec.ts, which checks the page title 'Конструктор альбому' (from index.html, not from the placeholder); it passes on both projects. The album list h1 still shows strings.appTitle 'Конструктор альбому'. The DEV import harness branch is kept unchanged."
+  ],
+  "blockers": [],
+  "fail_first": {
+    "present": false,
+    "skipped_reason": "The bundle carries no fail-first run for the phase 4 e2e specs; all tests and modules are new in this phase.",
+    "evidence_path": null,
+    "failure_was_assertion": false
+  },
+  "notes": "Static pass only: AC-4.9 to AC-4.19 (browser) are delegated, and /df:probe phase-4 still owes the runtime proof. Bundle read to its last line (2366 of 2366). Leak note: the Write of phase-4-prediction.md reported 'updated', so a prediction file from an earlier run already existed at that path. I did not read it, and it did not change my reasoning."
+}

@@ -1,0 +1,132 @@
+phase: 2
+feature: feat-album-builder
+source: "Phase 2 Completion Criterion, .devflow/plan.md lines 238-246"
+checks:
+  - id: AC-2.1
+    kind: unit
+    intent: the two Phase 2 unit test files pass
+    run: npx vitest run tests/unit/store.test.ts tests/unit/storage.test.ts
+    expect: exit == 0
+    falsifier: >
+      If either file is missing, or an assertion fails (for example the autosaver saves
+      three times for three schedule calls), vitest exits non-zero.
+    blocking: true
+
+  - id: AC-2.2
+    kind: grep
+    intent: store.test.ts exercises redo (the undo and redo round trip)
+    run: git grep --untracked -n -E "\.redo\(\)" -- tests/unit/store.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If store.test.ts tests only undo, the round trip is not tested and this reads 0.
+    covers: [brief:R-24]
+    blocking: true
+
+  - id: AC-2.3
+    kind: grep
+    intent: store.test.ts dispatches with a coalesce key (five coalesced dispatches undo in one step)
+    run: git grep --untracked -n -E "coalesce:\s*['\"]" -- tests/unit/store.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If no dispatch in store.test.ts passes a coalesce key, the one-step undo of a
+      continuous drag is not tested and this reads 0.
+    covers: [brief:R-24]
+    blocking: true
+
+  - id: AC-2.4
+    kind: grep
+    intent: store.test.ts makes 150 dispatches to prove the history depth of 100
+    run: git grep --untracked -n -E "\b150\b" -- tests/unit/store.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the history-depth case is absent, this reads 0.
+    covers: [brief:R-24]
+    blocking: true
+
+  - id: AC-2.5
+    kind: grep
+    intent: storage.test.ts lists saved albums (the save, list and load round trip)
+    run: git grep --untracked -n -E "listAlbums\(" -- tests/unit/storage.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If storage.test.ts never calls listAlbums, the list part of the round trip is not
+      tested and this reads 0.
+    covers: [brief:R-4]
+    blocking: true
+
+  - id: AC-2.6
+    kind: grep
+    intent: storage.test.ts loads a saved album back (the save, list and load round trip)
+    run: git grep --untracked -n -E "loadAlbum\(" -- tests/unit/storage.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If storage.test.ts never calls loadAlbum, the load part of the round trip is not
+      tested and this reads 0.
+    covers: [brief:R-4]
+    blocking: true
+
+  - id: AC-2.7
+    kind: grep
+    intent: storage.test.ts reads a preview after deleteAlbum (deleteAlbum also deletes the previews of its photos)
+    run: git grep --untracked -n -E "getPreview\(" -- tests/unit/storage.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If storage.test.ts never reads a preview, nothing proves that deleteAlbum removes the
+      previews, and this reads 0.
+    covers: [brief:R-4]
+    blocking: true
+
+  - id: AC-2.8
+    kind: grep
+    intent: storage.test.ts drives the autosaver's schedule (three calls within 300 ms save once, with the last album)
+    run: git grep --untracked -n -E "\.schedule\(" -- tests/unit/storage.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If storage.test.ts never calls schedule, the debounce case is not tested and this
+      reads 0.
+    covers: [brief:R-25]
+    blocking: true
+
+  - id: AC-2.9
+    kind: grep
+    intent: storage.test.ts fires a pagehide event (a save happens before the timers advance)
+    run: git grep --untracked -n -E "['\"]pagehide['\"]" -- tests/unit/storage.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If storage.test.ts never dispatches pagehide, the immediate-tab-close case (E-6) is not
+      tested and this reads 0.
+    covers: [brief:R-25, brief:E-6]
+    blocking: true
+
+  - id: AC-2.10
+    kind: grep
+    intent: storage.test.ts registers an onError callback (a rejected save reaches onError)
+    run: git grep --untracked -n -E "\.onError\(" -- tests/unit/storage.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If storage.test.ts never registers onError, a save failure that disappears silently is
+      not caught, and this reads 0.
+    covers: [brief:R-41, brief:E-5]
+    blocking: true
+
+  - id: AC-2.11
+    kind: grep
+    intent: storage.test.ts serializes an album (parseLayout of serializeLayout deep-equals the album)
+    run: git grep --untracked -n -E "serializeLayout\(" -- tests/unit/storage.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If storage.test.ts never calls serializeLayout, the layout-file round trip is not
+      tested and this reads 0.
+    covers: [brief:R-26]
+    blocking: true
+
+  - id: AC-2.12
+    kind: grep
+    intent: storage.test.ts parses a file with a wrong format value (it throws LayoutFileError)
+    run: git grep --untracked -n -E "\"format\":\s*\"x\"" -- tests/unit/storage.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the test never parses the plan's bad input with a format of x, the rejection of a
+      wrong format is not tested and this reads 0.
+    covers: [brief:R-26]
+    blocking: true

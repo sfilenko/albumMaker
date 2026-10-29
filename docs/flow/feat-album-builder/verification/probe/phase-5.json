@@ -1,0 +1,326 @@
+{
+  "phase": 5,
+  "feature": "feat-album-builder",
+  "base": "bf97b4c8de13b73d7a0ae77ad3e52d7fb7136081",
+  "evidence_sha256": "25eff7e1c6f12a19343a7b979b30bf0d3023d26cffc940786329a81f8a3d8476",
+  "probe_kind": "browser",
+  "outcome": "pass",
+  "server": {
+    "started": true,
+    "ready_ms": 119,
+    "port": 5173,
+    "port_source": "declared",
+    "base_url": "http://localhost:5173",
+    "note": "Vite announced http://localhost:5173/, the same as the resolved base_url. Started from D:/personal/Photo/composition with npm run dev -- --port 5173 --strictPort. Stopped with TaskStop and doctor.mjs stop (free_after: true). Desktop checks were driven in the Playwright MCP Chromium browser at 1280x800. AC-5.10 and AC-5.14 and the mobile sweep were driven in real WebKit with the iPhone 13 device profile, by a Node script in the scratchpad that uses the project's @playwright/test against the same server."
+  },
+  "preconditions": [
+    {
+      "what": "The editor shows the phase-5 surfaces: the spread strip with strip-add (+) and strip-delete, and template-panel with 12 template buttons (template-full to template-solo).",
+      "held": true,
+      "evidence": "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.8.png"
+    }
+  ],
+  "checks": [
+    {
+      "id": "AC-5.8",
+      "result": "pass",
+      "assertions": [
+        { "then": "the first strip item is labelled Обкладинка", "actual": "strip-0 innerText = Обкладинка", "ok": true },
+        { "then": "15 more strip items follow", "actual": "16 strip items in all (strip-0 to strip-15)", "ok": true },
+        { "then": "each spread has 1 empty cell", "actual": "each of spreads 1-15 selected in turn: 1 cell, 1 with data-photo=\"\"; store templateId = full on all 16 spreads", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.8.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.8.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.8.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.9",
+      "result": "pass",
+      "assertions": [
+        { "then": "the button Додати папку shows", "actual": "visible in photo-panel at 1280x800, Chrome 156 UA, showDirectoryPicker is a function", "ok": true },
+        { "then": "the button Додати фото shows", "actual": "visible in photo-panel", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.9.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.9.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.9.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.10",
+      "result": "pass",
+      "assertions": [
+        { "then": "the button Додати фото shows", "actual": "visible after a tap on the tab Фото; WebKit iPhone UA, viewport 390x664", "ok": true },
+        { "then": "the button Додати папку does not show", "actual": "0 buttons named Додати папку; typeof showDirectoryPicker = undefined", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.10.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.10.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.10.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.11",
+      "result": "pass",
+      "assertions": [
+        { "then": "the 9 photos show in the photo column", "actual": "9 tiles photo-land-1.jpg..photo-port-3.jpg, every img complete with naturalWidth 320 (land) or 213 (port); counter використано 0 / 9", "ok": true },
+        { "then": "a note names notes.txt as skipped", "actual": "skipped-note: Пропущено файли (не фото): notes.txt", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.11.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.11.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.11.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.12",
+      "result": "pass",
+      "assertions": [
+        { "then": "the counter shows використано 0 / 9", "actual": "використано 0 / 9", "ok": true },
+        { "then": "land-1.jpg to land-6.jpg are in that order", "actual": "files given to the chooser in reverse order (port-3 .. land-1); the column shows land-1, land-2, land-3, land-4, land-5, land-6, port-1, port-2, port-3", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.12.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.12.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.12.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.13",
+      "result": "pass",
+      "assertions": [
+        { "then": "cell-1-0 shows the photo", "actual": "after a mouse drag (8 move steps) from photo-land-1.jpg to cell-1-0 on template full: cell-1-0 img alt=land-1.jpg", "ok": true },
+        { "then": "the counter shows використано 1 / 9", "actual": "використано 1 / 9", "ok": true },
+        { "then": "photo-land-1.jpg has a check mark", "actual": "only photo-land-1.jpg has data-uses=1, class 'thumb used', text ✓", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.13.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.13.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.13.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.14",
+      "result": "pass",
+      "assertions": [
+        { "then": "cell-1-0 shows land-2.jpg", "actual": "WebKit iPhone 13: tap photo-land-2.jpg (armed-bar: Вибрано: land-2.jpg. Торкніться комірки, щоб поставити фото.), tap cell-1-0; cell-1-0 img alt=land-2.jpg", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.14.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.14.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.14.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.15",
+      "result": "pass",
+      "assertions": [
+        { "then": "cell-1-0 shows land-2.jpg", "actual": "after a mouse drag of cell-1-0 onto cell-1-1 on template two: cell-1-0 img alt=land-2.jpg", "ok": true },
+        { "then": "cell-1-1 shows land-1.jpg", "actual": "cell-1-1 img alt=land-1.jpg; crops swapped too: before [land-1 {cx 0.3, zoom 2}, land-2 {cx 0.5, zoom 1}], after [land-2 {cx 0.5, zoom 1}, land-1 {cx 0.3, zoom 2}] (the 0.3/2 crop was seeded through __store to make the crop swap observable)", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.15.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.15.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.15.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.16",
+      "result": "pass",
+      "assertions": [
+        { "then": "cell-1-0 is empty", "actual": "after a mouse drag of cell-1-0 (land-1.jpg) onto photo-panel: data-photo=\"\", 0 img in the cell", "ok": true },
+        { "then": "land-1.jpg is still in the photo column", "actual": "photo-land-1.jpg visible, data-uses=0; album photos 9 before and 9 after", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.16.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.16.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.16.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.17",
+      "result": "pass",
+      "assertions": [
+        { "then": "12 templates show, with the names of the list Templates for R-14", "actual": "12 visible buttons in panel order: Одне фото на весь розворот; По фото на сторінку; Велике + 2 / 2 + велике; Мозаїка з 6 фото; Панорама + два; Фото + два; Фото + сітка 4; Три в ряд; Чотири вертикальні; Сітка 2×2 на кожній сторінці; Фото з широкими полями; Одне фото з полями + пуста сторінка (identical to brief.md lines 70-81); no Latin id shows as a name", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.17.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.17.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.17.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.18",
+      "result": "pass",
+      "assertions": [
+        { "then": "the cell counts in panel order are 1, 2, 6, 6, 3, 3, 5, 3, 4, 8, 2, 1", "actual": "clicked each template on spread 2 in turn; rendered cell-2-* counts: 1, 2, 6, 6, 3, 3, 5, 3, 4, 8, 2, 1", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.18.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.18.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.18.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.19",
+      "result": "pass",
+      "assertions": [
+        { "then": "the 3 cells show the photos that were in cells 0, 1 and 2, in that order", "actual": "g8 filled by tap-to-place in non-name order [port-3, land-5, port-1, land-2, land-6, land-3, port-2, land-4]; after a click on Фото + два (p12): cells = [port-3, land-5, port-1]", "ok": true },
+        { "then": "the other 5 photos show as unused in the photo column", "actual": "land-2, land-3, land-4, land-6, port-2: data-uses=0, no 'used' class; counter 8 / 8 -> 3 / 8; album still holds 8 photos", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.19.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.19.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.19.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.20",
+      "result": "pass",
+      "assertions": [
+        { "then": "the visible part of the photo changes after the drag and after the zoom", "actual": "dblclick -> cell has class cropping; 100 px left drag: cx 0.5 -> 0.6732, img offset x -98 -> -196; wheel -300: zoom 1 -> 1.82; slider End key: zoom 8; track click at 50%: zoom 4.5", "ok": true },
+        { "then": "no empty area shows inside the cell at any step", "actual": "img rect covered the 370x377 cell rect at all 10 sampled steps, including a further 1000 px drag (clamped at cx 0.6732, img right edge 371 >= 370) and zoom 8", "ok": true },
+        { "then": "the slider range is 1 to 8", "actual": "zoom-slider min=1 max=8; six wheel +600 steps stop at zoom 1; value 0 clamps to zoom 1; Escape removes class cropping", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.20.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.20.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.20.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.21",
+      "result": "pass",
+      "assertions": [
+        { "then": "a low-dpi warning icon shows in the cell", "actual": "low-dpi-1-0 visible for land-1.jpg on template full", "ok": true },
+        { "then": "the icon gives a value of about 75 dpi", "actual": "text '⚠ 75 dpi', title 'Низька якість для друку: 75 dpi (потрібно щонайменше 200)'; falsifier side: land-1.jpg in cell 0 of g8 shows no low-dpi-2-0 icon", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.21.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.21.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.21.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.22",
+      "result": "pass",
+      "assertions": [
+        { "then": "the strip has 17 items", "actual": "16 -> 17", "ok": true },
+        { "then": "the new spread is at position 4 and is selected", "actual": "new spread id at index 4, strip-4 aria-current=true; items 0-3 and the old 4-15 kept their order", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.22.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.22.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.22.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.23",
+      "result": "pass",
+      "assertions": [
+        { "then": "the strip has 15 items", "actual": "spread 2 + Видалити розворот: confirm 'Видалити розворот 2? Фото залишаться в альбомі.' dismissed first, then accepted; 16 -> 15. A second dismiss on spread 3 kept 15 items (DOM and store)", "ok": true },
+        { "then": "the cover has no working delete control", "actual": "with strip-0 (Обкладинка) selected, strip-delete is disabled; a forced click left 15 items and the cover first", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.23.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.23.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.23.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.24",
+      "result": "pass",
+      "assertions": [
+        { "then": "the spread with land-1.jpg is at position 3", "actual": "mouse drag strip-1 onto strip-3: that spread id is at index 3, store photo spread index 3, strip-3 mini shows 1 filled cell", "ok": true },
+        { "then": "the cover is still first", "actual": "mouse drag strip-2 onto strip-0: the dragged spread lands at index 1, strip-0 stays Обкладинка with the cover id", "ok": true },
+        { "then": "the order is the same after the reload", "actual": "reload at once after the drags: the 16 ids are in the same order; photo spread index still 3", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.24.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.24.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.24.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.25",
+      "result": "pass",
+      "assertions": [
+        { "then": "cell-1-0 shows land-1.jpg", "actual": "after reload: cell-1-0 img alt=land-1.jpg, complete, naturalWidth 1600; counter використано 1 / 9", "ok": true },
+        { "then": "all 9 thumbnails show without a file prompt", "actual": "9 blob: thumbnails complete (320 / 213 px wide); 0 filechooser and 0 dialog events", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.25.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.25.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.25.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.26",
+      "result": "pass",
+      "assertions": [
+        { "then": "every thumbnail has loaded within 2 s after the album opens", "actual": "3 reloads, time from editor in DOM to all 9 thumbnails complete (rAF poll from an init script): 17 ms, 16 ms, 14 ms; thumbnails are 320/213 px blob: copies, not the 1800 px originals", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.26.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.26.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.26.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.27",
+      "result": "pass",
+      "assertions": [
+        { "then": "both cells show land-1.jpg", "actual": "template two; mouse drags of photo-land-1.jpg onto cell-1-0 and then cell-1-1: both img alt=land-1.jpg", "ok": true },
+        { "then": "photo-land-1.jpg shows the use count 2", "actual": "data-uses=2, tile text '✓ ×2'; counter використано 1 / 9", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.27.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.27.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.27.net.log"
+      ]
+    },
+    {
+      "id": "AC-5.28",
+      "result": "pass",
+      "assertions": [
+        { "then": "land-1.jpg is not in the photo column", "actual": "click photo-land-1.jpg -> armed-bar -> Прибрати з альбому -> confirm 'Прибрати «land-1.jpg» з альбому? Комірки з цим фото стануть порожніми.' accepted; photo-land-1.jpg detached; album photos 8; counter використано 0 / 8", "ok": true },
+        { "then": "cell-1-0 and cell-1-1 are empty", "actual": "both data-photo=\"\", 0 img elements in spread 1 cells (no broken image)", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.28.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.28.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-5.28.net.log"
+      ]
+    }
+  ],
+  "regression_sweep": [
+    { "surface": "album list (AlbumList.tsx, not changed in phase 5): load, rename open + cancel, open an album", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "undo / redo (Ctrl+Z, the redo and undo buttons) over a template change", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "spread guides and the gutter border drag on Три в ряд, then Ctrl+Z", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "WebKit iPhone 13: tabs Шаблони, Розвороти, Фото; a template tap on the phone", "tripwire_clean": true, "console_errors": [] }
+  ],
+  "lessons_fired": []
+}

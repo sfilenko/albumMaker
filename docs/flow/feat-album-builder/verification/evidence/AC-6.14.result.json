@@ -1,0 +1,61 @@
+{
+  "browser": "27.2",
+  "checks": {
+    "AC-6.14": {
+      "positionsSeen": [
+        "1 / 15"
+      ],
+      "start": "1",
+      "touchAction": "none",
+      "guides": 0,
+      "afterMouseSwipe": {
+        "index": "2",
+        "img": "land-2.jpg"
+      },
+      "scroll": {
+        "before": [
+          0,
+          0,
+          0
+        ],
+        "after": [
+          0,
+          0,
+          0
+        ]
+      },
+      "afterTouchTypeSwipeLeft": "3",
+      "afterTouchTypeSwipeRight": "2",
+      "afterShortMove": "2",
+      "tripwire": {
+        "console_errors": 0,
+        "uncaught": 0,
+        "http_5xx": 0
+      }
+    }
+  },
+  "sweep": {
+    "mobile-editor": {
+      "dialogBox": {
+        "x": 0,
+        "y": 265.609375,
+        "width": 390,
+        "height": 398.390625
+      },
+      "dialogInViewport": true,
+      "templateButtons": 13,
+      "horizontalOverflow": false,
+      "tripwire": {
+        "console_errors": 0,
+        "uncaught": 0,
+        "http_5xx": 0
+      }
+    }
+  },
+  "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Mobile/15E148 Safari/604.1",
+  "viewport": {
+    "width": 390,
+    "height": 664
+  },
+  "maxTouchPoints": 0
+}

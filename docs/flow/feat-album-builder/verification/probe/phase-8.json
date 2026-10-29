@@ -1,0 +1,210 @@
+{
+  "phase": 8,
+  "feature": "feat-album-builder",
+  "base": "695fcba82c00ff64f3918f0fefceaf3a38fb46d2",
+  "evidence_sha256": "15f5dae5436a51dd88a8601eb448b6e8275f3069d2a2d1181cb814ba1c3821a2",
+  "probe_kind": "browser",
+  "outcome": "pass_with_deviation",
+  "server": {
+    "started": true,
+    "ready_ms": 299,
+    "port": 5173,
+    "port_source": "declared",
+    "base_url": "http://localhost:5173",
+    "note": "Dev server: npm run dev -- --port 5173 --strictPort, started from D:/personal/Photo/composition; it bound http://localhost:5173/. Second server for AC-8.23 only: npx vite preview on port 5175 (doctor.mjs port --extra 1, extra_ports [5175]), started from D:/personal/Photo/composition, serving a production build made with npx vite build --outDir into the session scratchpad (pwa-dist), not into the repo. Both stopped with TaskStop and doctor.mjs stop; free_after true for both ports. All checks were driven in fresh Playwright browser contexts created from the MCP browser; the MCP default context (which holds an older album) was only read, never written."
+  },
+  "preconditions": [
+    {
+      "what": "The album list shows the Phase 8 button 'Відкрити файл' (data-testid open-file), which opens a layout file from the list. The phase introduced this control; the base untracked tree has no src/ui.",
+      "held": true,
+      "evidence": "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/precondition-8.png"
+    }
+  ],
+  "checks": [
+    {
+      "id": "AC-8.16",
+      "result": "substituted",
+      "deviation": "The layout file was saved and opened through the app's own fallback path (anchor download and <input type=file>), not through the Chromium File System Access pickers, which are browser chrome. The pickers were removed with an init script, as tests/e2e/relink.spec.ts does.",
+      "assertions": [
+        { "then": "setup: album with land-1..3 on spread 1 (row3), spread 2 on template two, showGuides false; saved with Зберегти у файл", "actual": "before save: row3:land-1.jpg,land-2.jpg,land-3.jpg | two:-,- | 13 x full; settings showGuides false; 16 spreads", "ok": true },
+        { "then": "empty browser (IndexedDB empty for the origin)", "actual": "a new browser context: album-item count 0 before the open", "ok": true },
+        { "then": "all spreads, templates and settings come back", "actual": "after open: same 16 spreads, same templateIds (full,row3,two,full x13), same cell-to-photo-name map, settings JSON identical including showGuides false; guide-safe not rendered", "ok": true },
+        { "then": "each placed cell shows a grey box with its file name and a button Знайти фото", "actual": "missing-1-0/1/2 text 'land-1.jpg|land-2.jpg|land-3.jpg' + 'Знайти фото'; find-photo-1-i text 'Знайти фото'; 0 img in each cell; missing-bar 'Не знайдено фото на цьому пристрої: 3.'; banner-print-warnings 'не знайдено фото: 3'", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.16.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.16.before-save.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.16.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.16.net.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.16.album.json"
+      ]
+    },
+    {
+      "id": "AC-8.17",
+      "result": "pass",
+      "assertions": [
+        { "then": "every grey box shows its photo again", "actual": "after reload of the AC-8.16 editor: find-missing -> relink-dialog -> relink-choose-files with land-1..6 -> relink-all-found -> relink-close; img present in cell-1-0/1/2; 0 elements with data-testid missing-*", "ok": true },
+        { "then": "each photo is in the same cell as before the save", "actual": "img alt per cell: land-1.jpg, land-2.jpg, land-3.jpg; store map row3:land-1.jpg,land-2.jpg,land-3.jpg equals the pre-save map", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.17.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.17.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.17.net.log"
+      ]
+    },
+    {
+      "id": "AC-8.18",
+      "result": "substituted",
+      "deviation": "Layout file saved by download and opened by <input type=file> (the app's fallback path), not by the Chromium File System Access pickers. The relink itself used the app's native <input type=file> path.",
+      "assertions": [
+        { "then": "setup: dup-a/IMG_0001.jpg in cell 0, dup-b/IMG_0001.jpg in cell 1", "actual": "placed by drag; cell widths [1800, 1600]; colours cell0 rgb(77,203,77) green, cell1 rgb(203,77,203) magenta", "ok": true },
+        { "then": "opened in an empty browser", "actual": "new context, album-item 0; missing-1-0 and missing-1-1 both 'IMG_0001.jpg Знайти фото'", "ok": true },
+        { "then": "cell 0 shows the dup-a photo (hue 120, label A)", "actual": "relink with files in order [dup-b, dup-a]; cell-1-0 photo width 1800, pixel rgb(77,203,77) (green, hue 120)", "ok": true },
+        { "then": "cell 1 shows the dup-b photo (hue 300, label B)", "actual": "cell-1-1 photo width 1600, pixel rgb(203,77,203) (magenta, hue 300)", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.18.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.18.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.18.net.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.18.album.json"
+      ]
+    },
+    {
+      "id": "AC-8.19",
+      "result": "substituted",
+      "deviation": "The same .album.json was opened with the editor's Відкрити файл through <input type=file> (fallback path), not through showOpenFilePicker.",
+      "assertions": [
+        { "then": "setup: album saved (AC-8.16 file) and still in this browser, then edited", "actual": "spread 3 set to template pano after the save; templates full,row3,two,pano,full...", "ok": true },
+        { "then": "the app asks Замінити наявний альбом?", "actual": "one confirm dialog: 'Замінити наявний альбом? «Новий альбом» у цьому браузері стане таким, як у файлі.'", "ok": true },
+        { "then": "a cancel leaves the album as it was", "actual": "after dismiss: same album id, spreads full,row3,two,pano,... and 3 filled cells; same after a reload", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.19.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.19.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.19.net.log"
+      ]
+    },
+    {
+      "id": "AC-8.20",
+      "result": "pass",
+      "assertions": [
+        { "then": "precondition: no storage banner", "actual": "banner-storage-error count 0 before the patch", "ok": true },
+        { "then": "a banner shows a storage error", "actual": "after IDBObjectStore.prototype.put throws QuotaExceededError and land-1.jpg is dragged onto cell-2-0: banner-storage-error visible, text 'Браузер не може зберегти зміни. Збережіть альбом у файл, щоб не втратити їх.'; the photo is still placed in the cell", "ok": true },
+        { "then": "the banner has the button Зберегти у файл", "actual": "banner-storage-error-save text 'Зберегти у файл'; a click downloads 'Новий альбом.album.json'", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.20.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.20.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.20.net.log"
+      ]
+    },
+    {
+      "id": "AC-8.21",
+      "result": "substituted",
+      "deviation": "The save to file used the download fallback, not showSaveFilePicker. saveLayoutFile returns Date.now() after either path, so the save time the rule reads is the same.",
+      "assertions": [
+        { "then": "setup: page.clock.install, album saved to a file, then edited (spread 1 template two)", "actual": "banner-backup count 0 one hour after the edit", "ok": true },
+        { "then": "a banner reminds the user to save, with the button Зберегти у файл", "actual": "clock +96 h, reload: banner-backup visible, 'Альбом змінено, а у файл його не зберігали понад 3 дні. Збережіть копію у файл.'; banner-backup-save 'Зберегти у файл'", "ok": true },
+        { "then": "falsifier control: no banner when nothing changed after the last save", "actual": "banner-backup-save clicked -> banner detached; clock +96 h with no edit, reload: banner-backup count 0", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.21.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.21.no-edit.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.21.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.21.net.log"
+      ]
+    },
+    {
+      "id": "AC-8.22",
+      "result": "substituted",
+      "deviation": "Driven in Chromium with an iPhone Safari user agent (iOS 17.4), isMobile, hasTouch and a 390x664 viewport, not in the WebKit mobile-webkit engine, which the MCP browser cannot launch. The banner rule in Banners.tsx discriminates on navigator.userAgent, display-mode standalone and localStorage iosInstallHintClosed; all three were reproduced.",
+      "assertions": [
+        { "then": "the home-screen banner shows on the first visit", "actual": "UA contains iPhone, display-mode standalone false; after create-album: banner-ios-install visible, 'Додайте програму на початковий екран: «Поділитися» → «На Початковий екран»...'", "ok": true },
+        { "then": "after close and reload it does not show", "actual": "banner-ios-install-close clicked -> banner detached; reload -> editor shown, banner-ios-install count 0", "ok": true },
+        { "then": "control: desktop Chromium does not show it", "actual": "desktop context: banner-ios-install count 0 in the editor", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.22.first-visit.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.22.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.22.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.22.net.log"
+      ]
+    },
+    {
+      "id": "AC-8.23",
+      "result": "pass",
+      "assertions": [
+        { "then": "given: the production build served by vite preview", "actual": "npx vite build (exit 0) into a scratchpad dir; npx vite preview on http://localhost:5175/", "ok": true },
+        { "then": "a service worker is registered", "actual": "navigator.serviceWorker.controller non-null; registration http://localhost:5175/sw.js; manifest name 'Конструктор альбому', short_name 'Альбом', display 'standalone'", "ok": true },
+        { "then": "the app opens offline and shows the album list", "actual": "context.setOffline(true), reload: album-list visible; create-album opens the editor offline", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.23.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.23.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.23.net.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.23.build.log"
+      ]
+    },
+    {
+      "id": "AC-8.24",
+      "result": "pass",
+      "assertions": [
+        { "then": "every request in the network log goes to the app origin", "actual": "136 requests recorded from both page loads through import of land-1..6, two drags, template two -> row3, save, open in an empty context, relink: 120 http://localhost:5173, 16 blob:http://localhost:5173; 0 to another origin", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.24.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.24.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-8.24.net.log"
+      ]
+    }
+  ],
+  "deviations": [
+    {
+      "kind": "substituted_facet",
+      "check": "AC-8.16",
+      "what": "The Chromium File System Access save and open pickers are browser chrome and cannot be driven. An init script removed showSaveFilePicker and showOpenFilePicker, so Зберегти у файл made a download and Відкрити файл used <input type=file>.",
+      "why": "Both paths carry the same bytes through serializeLayout and parseLayout in src/storage/layoutFile.ts; the phase risk (open into an empty browser, grey boxes) is downstream of the file read."
+    },
+    {
+      "kind": "substituted_facet",
+      "check": "AC-8.18",
+      "what": "Same picker substitution as AC-8.16 for the save and the open of the duplicate-name layout file.",
+      "why": "The check discriminates on the relink match (matchPhotos), which reads the same parsed album either way."
+    },
+    {
+      "kind": "substituted_facet",
+      "check": "AC-8.19",
+      "what": "The editor's Відкрити файл was driven through <input type=file> instead of showOpenFilePicker.",
+      "why": "The replace question comes after parseLayout, on the same album id, for both paths."
+    },
+    {
+      "kind": "substituted_facet",
+      "check": "AC-8.21",
+      "what": "The save to file in the given used the download fallback instead of showSaveFilePicker.",
+      "why": "saveLayoutFile returns Date.now() after either path, and the backup rule reads only that time and the edit time."
+    },
+    {
+      "kind": "substituted_facet",
+      "check": "AC-8.22",
+      "what": "Chromium with an iPhone Safari user agent, isMobile and hasTouch replaced the WebKit mobile-webkit browser, which the MCP browser cannot launch.",
+      "why": "isIos() and isStandalone() in src/ui/Banners.tsx read navigator.userAgent, maxTouchPoints, display-mode and navigator.standalone, and the closed state is in localStorage; the engine is not the layer the rule depends on."
+    }
+  ],
+  "regression_sweep": [
+    { "surface": "editor setup: import land-1 + port-1, drag land-1 onto cell-1-0", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "settings dialog (SettingsDialog.tsx): open, close", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "preview mode (PreviewMode.tsx): open at 1 / 15, ArrowRight, close", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "export dialog (ExportDialog.tsx): open, read warnings, close", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "album list: back to list, open the album", "tripwire_clean": true, "console_errors": [] }
+  ],
+  "lessons_fired": []
+}

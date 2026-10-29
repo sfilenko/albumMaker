@@ -1,0 +1,9 @@
+{
+  "phase": 1,
+  "feature": "feat-album-builder",
+  "probe_kind": "browser",
+  "checks": [],
+  "outcome": "skipped",
+  "skipped_reason": "no driven checks: every row of the phase-1 contract is unit or grep, so the tripwire sweep is deferred to /df:probe all",
+  "deferred_to": "all"
+}

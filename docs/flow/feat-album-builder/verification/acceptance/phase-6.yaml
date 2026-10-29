@@ -1,0 +1,216 @@
+phase: 6
+feature: feat-album-builder
+source: "Phase 6 Completion Criterion, .devflow/plan.md lines 385-391, and the brief's How-it-will-be-observed column for R-16, R-17, R-23, R-30, R-38"
+checks:
+  - id: AC-6.1
+    kind: unit
+    intent: the Phase 6 end-to-end test passes on both Playwright projects
+    run: npx playwright test tests/e2e/settings.spec.ts
+    expect: exit == 0
+    falsifier: >
+      If the file is missing, or a case fails on desktop-chromium or mobile-webkit (for
+      example a guide element exists in preview), Playwright exits non-zero.
+    blocking: true
+
+  - id: AC-6.2
+    kind: grep
+    intent: settings.spec.ts reads cell rectangles through window.__store (a 12 mm gap gives cells 12 mm apart)
+    run: git grep --untracked -n -E "__store\.(album|dispatch)" -- tests/e2e/settings.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If settings.spec.ts never reads the store, the 12 mm distance is not checked against
+      the model and this reads 0.
+    covers: [brief:R-16]
+    blocking: true
+
+  - id: AC-6.3
+    kind: grep
+    intent: settings.spec.ts uses template mat (the margin setting does not change mat)
+    run: git grep --untracked -n -E "['\"]mat['\"]|template-mat" -- tests/e2e/settings.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If settings.spec.ts never sets mat, a margin setting that overrides padMm passes and
+      this reads 0.
+    covers: [brief:R-17]
+    blocking: true
+
+  - id: AC-6.4
+    kind: grep
+    intent: settings.spec.ts presses ArrowRight in preview (the next spread shows)
+    run: git grep --untracked -n -E "['\"]ArrowRight['\"]" -- tests/e2e/settings.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the preview case never presses ArrowRight, the key navigation is not tested and
+      this reads 0.
+    covers: [brief:R-38]
+    blocking: true
+
+  - id: AC-6.5
+    kind: browser
+    intent: a gap of 12 mm makes the gaps wider on every spread
+    given: an album with spread 1 on template two and spread 2 on template row3, desktop viewport
+    when: >
+      open the settings dialog and set проміжок to 12 mm, then look at spread 1 and spread 2
+    then:
+      - on spread 1 the screen gap between the two cells is twice the gap at 6 mm
+      - on spread 2 the gaps between the three cells are wider than at 6 mm
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If only the current spread changes, or the gap does not change on screen, this fails.
+    covers: [brief:R-16]
+    blocking: true
+
+  - id: AC-6.6
+    kind: browser
+    intent: the margin setting moves the cells of normal templates away from the spread edge
+    given: an album with spread 1 on template full, desktop viewport
+    when: >
+      set поле від краю to 10 mm
+    then:
+      - the cell of spread 1 no longer reaches the spread edge
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the cell still reaches the edge, or the field does not exist, this fails.
+    covers: [brief:R-16]
+    blocking: true
+
+  - id: AC-6.7
+    kind: browser
+    intent: the background setting offers ivory, white and black, and a change applies to all spreads
+    given: an album with photos on spread 1 and template mat on spread 2
+    when: >
+      open the settings dialog, check the default background, then choose black
+    then:
+      - the default background is ivory f4efe6
+      - the options are ivory f4efe6, white ffffff and black 1d1d1d
+      - after the change the background of spread 1 and spread 2 is 1d1d1d
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the default is not ivory, a fourth colour or a free colour picker shows, or only
+      the current spread changes, this fails.
+    covers: [brief:R-16]
+    blocking: true
+
+  - id: AC-6.8
+    kind: browser
+    intent: the margin setting does not change the two templates with their own 35 mm margin
+    given: >
+      an album with spread 1 on template Фото з широкими полями and spread 2 on template
+      Одне фото з полями + пуста сторінка
+    when: >
+      set поле від краю to 20 mm, then look at both spreads
+    then:
+      - the cells of both spreads keep the same position and size as before the change
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If a cell of either template moves or shrinks after the margin change, this fails.
+    covers: [brief:R-17]
+    blocking: true
+
+  - id: AC-6.9
+    kind: browser
+    intent: the guide lines can be hidden in settings, and the bleed and safe-zone values can be changed
+    given: a new album open, guides showing by default
+    when: >
+      set безпечна зона to 15 mm and виліт to 5 mm, then turn off показувати напрямні
+    then:
+      - the safe-zone rectangles move inward after the safe-zone change
+      - the shaded bleed area becomes wider after the bleed change
+      - no guide-safe and no guide-fold element is visible after guides are turned off
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If a value change does not move its guide, or any guide stays visible after the
+      switch is off, this fails.
+    covers: [brief:R-23]
+    blocking: true
+
+  - id: AC-6.10
+    kind: browser
+    intent: the book start setting marks the left half of the first spread and the right half of the last spread as not printed
+    given: an album with photos on spread 1 and on spread 15, book start at its default
+    when: >
+      in settings choose Сторінка 1 — окрема права сторінка
+    then:
+      - the left half of spread 1 shows the not-printed label
+      - the right half of spread 15 shows the not-printed label
+      - no other half shows the label
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the label shows on the wrong half, on the cover, or on only one of the two
+      spreads, this fails.
+    covers: [brief:R-30]
+    blocking: true
+
+  - id: AC-6.11
+    kind: browser
+    intent: a switch of book start and back leaves every photo in its cell
+    given: the album of AC-6.10 with book start Сторінка 1 — окрема права сторінка
+    when: >
+      choose Сторінка 1 — ліва половина першого розвороту again
+    then:
+      - every photo that was on spread 1 and spread 15 is still in its cell
+      - no half shows the not-printed label
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If any cell on a half that was not printed is empty after the switch back, this fails.
+    covers: [brief:R-30]
+    blocking: true
+
+  - id: AC-6.12
+    kind: browser
+    intent: the preview shows the album full screen without guides and without bleed, and ArrowRight goes to the next spread
+    given: an album with different photos on spread 1 and spread 2, desktop viewport
+    when: >
+      open the preview at spread 1, then press ArrowRight
+    then:
+      - the preview fills the screen
+      - no guide-safe, guide-fold or shaded bleed element exists
+      - the visible area is the 600x300 mm trim area only
+      - after ArrowRight spread 2 shows
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If a guide line or the bleed shows in preview, or ArrowRight does not change the
+      spread, this fails.
+    covers: [brief:R-38]
+    blocking: true
+
+  - id: AC-6.13
+    kind: browser
+    intent: in preview the arrow buttons and ArrowLeft go back and forth, and Escape closes the preview
+    given: the preview open at spread 2
+    when: >
+      press ArrowLeft, click the next-spread arrow button, then press Escape
+    then:
+      - ArrowLeft shows spread 1
+      - the arrow button shows spread 2
+      - Escape returns to the editor
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If an arrow button or a key does nothing, or Escape leaves the preview open, this
+      fails.
+    covers: [brief:R-38]
+    blocking: true
+
+  - id: AC-6.14
+    kind: browser
+    intent: on a touch screen a swipe in preview goes to the next spread
+    given: the mobile-webkit browser with an iPhone 13 viewport, the preview open at spread 1
+    when: >
+      swipe from right to left
+    then:
+      - spread 2 shows
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the swipe scrolls the page or does nothing, this fails.
+    covers: [brief:R-38]
+    blocking: true

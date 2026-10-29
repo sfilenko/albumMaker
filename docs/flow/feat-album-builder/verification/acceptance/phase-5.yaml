@@ -1,0 +1,436 @@
+phase: 5
+feature: feat-album-builder
+source: "Phase 5 Completion Criterion, .devflow/plan.md lines 352-362; the Edge Cases table rows E-8 and E-12 (lines 482, 486); the Decision Log assumption for Q-2 (line 169); and the brief's How-it-will-be-observed column for R-3, R-8 to R-15, R-21, R-22, R-28, R-29"
+checks:
+  - id: AC-5.1
+    kind: unit
+    intent: the Phase 5 end-to-end tests pass on both Playwright projects
+    run: npx playwright test tests/e2e/dnd.spec.ts tests/e2e/crop.spec.ts
+    expect: exit == 0
+    falsifier: >
+      If either file is missing, or a case fails on desktop-chromium or mobile-webkit (for
+      example the tap-to-place case on mobile), Playwright exits non-zero.
+    blocking: true
+
+  - id: AC-5.2
+    kind: grep
+    intent: dnd.spec.ts drops a photo on cell-1-0 (the counter goes from 0 / 9 to 1 / 9)
+    run: git grep --untracked -n -E "cell-1-0" -- tests/e2e/dnd.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If dnd.spec.ts never targets cell-1-0, the plan's drag case is not tested and this
+      reads 0.
+    covers: [brief:R-10, brief:R-11]
+    blocking: true
+
+  - id: AC-5.3
+    kind: grep
+    intent: dnd.spec.ts taps photo-land-2.jpg (mobile tap-to-place)
+    run: git grep --untracked -n -E "photo-land-2\.jpg" -- tests/e2e/dnd.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the mobile tap case is absent, this reads 0.
+    covers: [brief:R-12]
+    blocking: true
+
+  - id: AC-5.4
+    kind: grep
+    intent: dnd.spec.ts applies template g8 (8 cells with the earlier photo in cell 0)
+    run: git grep --untracked -n -E "['\"]g8['\"]|template-g8" -- tests/e2e/dnd.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If dnd.spec.ts never applies g8, the template click case is not tested and this
+      reads 0.
+    covers: [brief:R-14, brief:R-15]
+    blocking: true
+
+  - id: AC-5.5
+    kind: grep
+    intent: dnd.spec.ts asserts 17 strip items after "+"
+    run: git grep --untracked -n -E "\b17\b" -- tests/e2e/dnd.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the strip count after "+" is not asserted, an add that does nothing passes and this
+      reads 0.
+    covers: [brief:R-29]
+    blocking: true
+
+  - id: AC-5.6
+    kind: grep
+    intent: crop.spec.ts reads cx through window.__store (a 100 px drag to the left gives cx above 0.5)
+    run: git grep --untracked -n -E "__store\.(album|dispatch)" -- tests/e2e/crop.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If crop.spec.ts never reads the store, the pan direction is checked by eye at best and
+      this reads 0.
+    covers: [brief:R-21]
+    blocking: true
+
+  - id: AC-5.7
+    kind: grep
+    intent: crop.spec.ts zooms with the mouse wheel (wheel zoom never goes below 1)
+    run: git grep --untracked -n -E "mouse\.wheel\(" -- tests/e2e/crop.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If crop.spec.ts never sends a wheel event, the zoom floor is not tested and this
+      reads 0.
+    covers: [brief:R-21]
+    blocking: true
+
+  - id: AC-5.8
+    kind: browser
+    intent: a new album shows the cover and 15 spreads in the strip, each with 1 empty cell
+    given: a new album open in the editor
+    when: >
+      look at the spread strip and select each spread
+    then:
+      - the first strip item is labelled Обкладинка
+      - 15 more strip items follow
+      - each spread has 1 empty cell
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the strip shows 15 or 17 items in all, has no Обкладинка label, or a spread has a
+      template other than one photo on the whole spread, this fails.
+    covers: [brief:R-3]
+    blocking: true
+
+  - id: AC-5.9
+    kind: browser
+    intent: desktop Chromium shows both "Додати папку" and "Додати фото"
+    given: a desktop Chromium viewport of 1280x800, with an album open
+    when: >
+      look at the photo column
+    then:
+      - the button Додати папку shows
+      - the button Додати фото shows
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If either button is missing in Chromium, this fails.
+    covers: [brief:R-8]
+    blocking: true
+
+  - id: AC-5.10
+    kind: browser
+    intent: the iPhone viewport shows "Додати фото" and no "Додати папку"
+    given: the mobile-webkit browser with an iPhone 13 viewport, with an album open
+    when: >
+      open the tab Фото
+    then:
+      - the button Додати фото shows
+      - the button Додати папку does not show
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If Додати папку shows in WebKit, where showDirectoryPicker does not exist, or Додати
+      фото is missing, this fails.
+    covers: [brief:R-8]
+    blocking: true
+
+  - id: AC-5.11
+    kind: browser
+    intent: an import that includes notes.txt imports the photos and names the skipped file
+    given: an album open, the files of tests/fixtures (9 photos and notes.txt) ready for the file chooser
+    when: >
+      click Додати фото and choose the 9 photos and notes.txt
+    then:
+      - the 9 photos show in the photo column
+      - a note names notes.txt as skipped
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If notes.txt is silently dropped, shows as a broken photo, or stops the import of the
+      other files, this fails.
+    covers: [brief:R-9]
+    blocking: true
+
+  - id: AC-5.12
+    kind: browser
+    intent: the photo column lists the photos in file-name order and shows the counter "використано 0 / 9"
+    given: an album with the 9 fixtures imported and no photo placed
+    when: >
+      look at the photo column
+    then:
+      - the counter shows використано 0 / 9
+      - land-1.jpg to land-6.jpg are in that order
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the counter is missing or shows a different total, or the photos are in import
+      order rather than name order, this fails.
+    covers: [brief:R-10]
+    blocking: true
+
+  - id: AC-5.13
+    kind: browser
+    intent: a photo dragged onto an empty cell fills it, and the counter and check mark update
+    given: an album with the 9 fixtures imported, spread 1 on template full, desktop viewport
+    when: >
+      drag photo-land-1.jpg with the mouse onto cell-1-0
+    then:
+      - cell-1-0 shows the photo
+      - the counter shows використано 1 / 9
+      - photo-land-1.jpg has a check mark
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the cell stays empty, the counter stays at 0 / 9, or the check mark shows on a
+      different photo, this fails.
+    covers: [brief:R-10, brief:R-11]
+    blocking: true
+
+  - id: AC-5.14
+    kind: browser
+    intent: on a touch screen a tap on a photo and then a tap on a cell places the photo
+    given: the mobile-webkit browser with an iPhone 13 viewport, an album with the 9 fixtures imported
+    when: >
+      in the tab Фото tap photo-land-2.jpg, then tap cell-1-0
+    then:
+      - cell-1-0 shows land-2.jpg
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the second tap only selects the cell, or the first tap starts a drag that the page
+      scroll cancels, this fails.
+    covers: [brief:R-12]
+    blocking: true
+
+  - id: AC-5.15
+    kind: browser
+    intent: a drag from one cell onto another swaps their photos and crops
+    given: spread 1 on template two, land-1.jpg in cell 0 and land-2.jpg in cell 1
+    when: >
+      drag cell-1-0 onto cell-1-1
+    then:
+      - cell-1-0 shows land-2.jpg
+      - cell-1-1 shows land-1.jpg
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If both cells show the same photo after the drop, or the source cell becomes empty,
+      this fails.
+    covers: [brief:R-13]
+    blocking: true
+
+  - id: AC-5.16
+    kind: browser
+    intent: a drag from a cell onto the photo column empties that cell
+    given: spread 1 with land-1.jpg in cell-1-0
+    when: >
+      drag cell-1-0 onto photo-panel
+    then:
+      - cell-1-0 is empty
+      - land-1.jpg is still in the photo column
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the cell keeps its photo, or the photo is removed from the album, this fails.
+    covers: [brief:R-13]
+    blocking: true
+
+  - id: AC-5.17
+    kind: browser
+    intent: the template library shows the 12 template names of the brief
+    given: an album open, desktop viewport
+    when: >
+      look at template-panel
+    then:
+      - 12 templates show, with the names of the list Templates for R-14
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the panel shows 11 or 13 templates, or a name differs from the brief's list (for
+      example a Latin template id shows), this fails.
+    covers: [brief:R-14]
+    blocking: true
+
+  - id: AC-5.18
+    kind: browser
+    intent: applying each template gives its stated number of cells
+    given: an album open, desktop viewport
+    when: >
+      click each of the 12 templates in turn on the current spread
+    then:
+      - the cell counts in panel order are 1, 2, 6, 6, 3, 3, 5, 3, 4, 8, 2, 1
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If any template shows a different number of cells than the brief's list, this fails.
+    covers: [brief:R-14]
+    blocking: true
+
+  - id: AC-5.19
+    kind: browser
+    intent: a template change from 8 photos to Фото + два keeps the first 3 in order and the other 5 as unused
+    given: a spread on template g8 with 8 different photos placed in cells 0 to 7
+    when: >
+      click the template Фото + два
+    then:
+      - the 3 cells show the photos that were in cells 0, 1 and 2, in that order
+      - the other 5 photos show as unused in the photo column
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the photos come in a different order, a photo is lost from the album, or the 5
+      extra photos keep a check mark, this fails.
+    covers: [brief:R-15, brief:E-10]
+    blocking: true
+
+  - id: AC-5.20
+    kind: browser
+    intent: in crop mode the user moves and zooms the photo, and the photo always covers the cell
+    given: land-1.jpg in a cell of template two (a portrait cell)
+    when: >
+      double-click the cell, drag the photo 100 px to the left, then zoom with the wheel
+      and with the zoom slider, then press Escape
+    then:
+      - the visible part of the photo changes after the drag and after the zoom
+      - no empty area shows inside the cell at any step
+      - the slider range is 1 to 8
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the drag moves the photo so that background shows at an edge, the wheel zooms out
+      below 1, or Escape does not end crop mode, this fails.
+    covers: [brief:R-20, brief:R-21]
+    blocking: true
+
+  - id: AC-5.21
+    kind: browser
+    intent: a cell whose photo gives less than 200 dpi shows the warning icon with its dpi
+    given: land-1.jpg (1800x1200 px) placed on a spread with template full
+    when: >
+      look at the cell
+    then:
+      - a low-dpi warning icon shows in the cell
+      - the icon gives a value of about 75 dpi
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If no icon shows, or the icon shows for a photo above 200 dpi (for example land-1.jpg
+      in one cell of g8), this fails.
+    covers: [brief:R-22]
+    blocking: true
+
+  - id: AC-5.22
+    kind: browser
+    intent: the strip button + adds a spread after the current spread
+    given: a new album open, spread 3 selected
+    when: >
+      click "+" in the strip
+    then:
+      - the strip has 17 items
+      - the new spread is at position 4 and is selected
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the new spread is added at the end instead of after spread 3, or the count does not
+      change, this fails.
+    covers: [brief:R-29]
+    blocking: true
+
+  - id: AC-5.23
+    kind: browser
+    intent: a spread can be deleted after a confirmation, and the cover cannot be deleted
+    given: a new album open
+    when: >
+      delete spread 2 and accept the confirmation, then select the cover and look for a
+      delete control
+    then:
+      - the strip has 15 items
+      - the cover has no working delete control
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If a spread is deleted without a confirmation, or the cover can be deleted, this fails.
+    covers: [brief:R-29]
+    blocking: true
+
+  - id: AC-5.24
+    kind: browser
+    intent: a strip drag reorders spreads, the cover stays first, and the order survives a reload
+    given: a new album with land-1.jpg on spread 1
+    when: >
+      drag strip-1 to position 3, then try to drag a spread before the cover, then reload
+    then:
+      - the spread with land-1.jpg is at position 3
+      - the cover is still first
+      - the order is the same after the reload
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the drag does nothing, a spread lands before the cover, or the reload restores the
+      old order, this fails.
+    covers: [brief:R-29]
+    blocking: true
+
+  - id: AC-5.25
+    kind: browser
+    intent: a photo placement survives a reload, and the photos show without a file prompt
+    given: an album with the 9 fixtures imported and land-1.jpg placed in cell-1-0
+    when: >
+      reload the page
+    then:
+      - cell-1-0 shows land-1.jpg
+      - all 9 thumbnails show without a file prompt
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the cell is empty after the reload, a thumbnail is blank, or the app asks for the
+      original files, this fails.
+    covers: [brief:R-25, brief:R-28]
+    blocking: true
+
+  - id: AC-5.26
+    kind: browser
+    intent: after an album opens, all its thumbnails show within 2 s (the Decision Log assumption for Q-2)
+    given: >
+      a desktop viewport, an album with the 9 fixtures imported (the repository has no
+      60-photo fixture set, so this measures 9 photos)
+    when: >
+      reload the page and measure the time until every thumbnail in the photo column has
+      loaded
+    then:
+      - every thumbnail has loaded within 2 s after the album opens
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If any thumbnail is still blank 2 s after the album opens, or the app decodes the
+      original files to draw the thumbnails, this fails.
+    covers: [brief:R-28]
+    blocking: true
+
+  - id: AC-5.27
+    kind: browser
+    intent: one photo in two cells is allowed, and the photo column shows its use count
+    given: spread 1 on template two, the 9 fixtures imported
+    when: >
+      drag photo-land-1.jpg onto cell-1-0 and again onto cell-1-1
+    then:
+      - both cells show land-1.jpg
+      - photo-land-1.jpg shows the use count 2
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the second drop moves the photo out of the first cell, or the photo column shows no
+      count, this fails.
+    covers: [brief:E-12]
+    blocking: true
+
+  - id: AC-5.28
+    kind: browser
+    intent: the action Прибрати з альбому on a used photo empties every cell that uses it
+    given: land-1.jpg in cell-1-0 and cell-1-1 of spread 1
+    when: >
+      use Прибрати з альбому on photo-land-1.jpg
+    then:
+      - land-1.jpg is not in the photo column
+      - cell-1-0 and cell-1-1 are empty
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If a cell still shows the photo, or shows a broken image, after the photo is removed,
+      this fails.
+    covers: [brief:E-8]
+    blocking: true

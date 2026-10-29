@@ -1,0 +1,79 @@
+{
+  "phase": 2,
+  "base": "045c9592e924460cff2aa1b62f9aefdf35f4fca7",
+  "feature": "feat-album-builder",
+  "evidence_sha256": "22155342ce95a5c27a764186ae7196dd5cfd973b2888fb2427533740c344e6c0",
+  "status": "pass",
+  "diff_stat": "src/main.tsx | 10 +++++++++- (1 file changed, 9 insertions(+), 1 deletion(-)); 29 new untracked files, 6 of them in phase 2",
+  "prediction": [
+    "src/state/store.ts (new): createAlbumStore(initial) with album/canUndo/canRedo as @preact/signals, dispatch(op, {coalesce}), undo, redo, replace (no history), subscribe (fires on dispatch/undo/redo/replace). History cap 100; consecutive dispatches with one coalesce key replace the top entry; an op that returns the same object makes no entry; a new dispatch clears redo.",
+    "src/storage/db.ts (new): idb openDB('album-builder', 1) with stores albums, previews, handles; saveAlbum/loadAlbum/listAlbums (updatedAt desc, {id,name,updatedAt}); deleteAlbum deletes album + previews of album.photos (full and thumb) + handle; putPreview/getPreview keyed by photoId+kind; hasPreviews; putDirHandle/getDirHandle; requestPersistence via navigator.storage.persist, guarded.",
+    "src/storage/autosave.ts (new): createAutosaver(save, delayMs=300): schedule sets pending and resets the timer; flush clears timer and saves pending; errors to onError; pagehide and visibilitychange-to-hidden call flush; dispose removes listeners and timer; next schedule retries after an error.",
+    "src/storage/layoutFile.ts (new): LayoutFileError; serializeLayout -> JSON {format:'album-builder',version:1,album}; parseLayout throws LayoutFileError for bad JSON, wrong format, unknown version; saveLayoutFile uses showSaveFilePicker else anchor download and returns Date.now(); openLayoutFile uses showOpenFilePicker else a file input.",
+    "tests/unit/store.test.ts (new): undo/redo round trip with .redo(), five dispatches with coalesce:'x' undo once, 150 dispatches -> 100 undos, same-object op no entry, subscribe fires.",
+    "tests/unit/storage.test.ts (new): import 'fake-indexeddb/auto'; save/list/load; deleteAlbum then getPreview undefined; vi.useFakeTimers; three schedule -> one save with last album; pagehide -> save before timers advance; rejected save -> onError; serializeLayout/parseLayout round trip; parseLayout('{\"format\":\"x\"}') throws LayoutFileError.",
+    "package.json may add idb and fake-indexeddb (possibly already in the scaffold).",
+    "No consumers of the new exports inside phase 2; later phases consume them."
+  ],
+  "divergences": [
+    {
+      "expected": "db.ts stores the preview Blob directly in Phase 2",
+      "found": "src/storage/db.ts stores previews as { type, bytes: ArrayBuffer } and rebuilds the Blob in getPreview",
+      "explained_by_plan": true,
+      "plan_quote": "IndexedDB keeps each screen copy as `{ type, bytes }`, where `bytes` is an `ArrayBuffer`. `getPreview` makes the `Blob` again. ... The signatures of `putPreview` and `getPreview` do not change. Phase 3 makes this change in `src/storage/db.ts`"
+    },
+    {
+      "expected": "autosave.ts exports only createAutosaver",
+      "found": "src/storage/autosave.ts also writes a synchronous localStorage copy (key prefix 'albumBackup:') on pagehide / hidden visibilitychange, removes it when a save of that change or a newer one completes, and exports restoreBackups(save), which App.tsx (Phase 4 file) calls before the first load. The createAutosaver signature matches the contract.",
+      "explained_by_plan": true,
+      "plan_quote": "Goal: ... Each change is saved automatically and survives an immediate tab close."
+    },
+    {
+      "expected": "class LayoutFileError extends Error {} and three rejection cases",
+      "found": "LayoutFileError carries a readonly reason 'json' | 'format' | 'version' | 'album'; parseLayout also rejects an album that has no string id or no spreads array. Superset of the contract; the class still extends Error.",
+      "explained_by_plan": true,
+      "plan_quote": "`parseLayout` throws `LayoutFileError` for bad JSON, a wrong `format` or an unknown `version`."
+    },
+    {
+      "expected": "preview kind typed inline as 'full' | 'thumb'",
+      "found": "db.ts exports type PreviewKind = 'full' | 'thumb' and uses it in the putPreview/getPreview signatures (structurally the same type)",
+      "explained_by_plan": true,
+      "plan_quote": "export function putPreview(photoId: string, kind: 'full' | 'thumb', blob: Blob): Promise<void>;"
+    }
+  ],
+  "acceptance": [
+    { "id": "AC-2.1", "result": "pass", "command": "npx vitest run tests/unit/store.test.ts tests/unit/storage.test.ts", "exit_code": 0, "evidence": "Test Files  2 passed (2); Tests  19 passed (19)" },
+    { "id": "AC-2.2", "result": "pass", "command": "git grep --untracked -n -E \"\\.redo\\(\\)\" -- tests/unit/store.test.ts", "exit_code": 0, "evidence": "2 matches: tests/unit/store.test.ts:16:  store.redo(); tests/unit/store.test.ts:78:  store.redo();" },
+    { "id": "AC-2.3", "result": "pass", "command": "git grep --untracked -n -E \"coalesce:\\s*['\\\"]\" -- tests/unit/store.test.ts", "exit_code": 0, "evidence": "3 matches, e.g. tests/unit/store.test.ts:32: for (let i = 1; i <= 5; i++) store.dispatch(..., { coalesce: 'gutter' });" },
+    { "id": "AC-2.4", "result": "pass", "command": "git grep --untracked -n -E \"\\b150\\b\" -- tests/unit/store.test.ts", "exit_code": 0, "evidence": "2 matches: store.test.ts:47 test('after 150 dispatches only 100 undos are possible'; :49 for (let i = 0; i < 150; i++)" },
+    { "id": "AC-2.5", "result": "pass", "command": "git grep --untracked -n -E \"listAlbums\\(\" -- tests/unit/storage.test.ts", "exit_code": 0, "evidence": "1 match: tests/unit/storage.test.ts:35:  const list = await listAlbums();" },
+    { "id": "AC-2.6", "result": "pass", "command": "git grep --untracked -n -E \"loadAlbum\\(\" -- tests/unit/storage.test.ts", "exit_code": 0, "evidence": "3 matches: storage.test.ts:37, :48, :115" },
+    { "id": "AC-2.7", "result": "pass", "command": "git grep --untracked -n -E \"getPreview\\(\" -- tests/unit/storage.test.ts", "exit_code": 0, "evidence": "2 matches: storage.test.ts:49 expect(await getPreview('p1', 'full')).toBeUndefined(); :50 'thumb'" },
+    { "id": "AC-2.8", "result": "pass", "command": "git grep --untracked -n -E \"\\.schedule\\(\" -- tests/unit/storage.test.ts", "exit_code": 0, "evidence": "10 matches, e.g. storage.test.ts:57, :59, :62 (three schedule calls in the debounce case)" },
+    { "id": "AC-2.9", "result": "pass", "command": "git grep --untracked -n -E \"['\\\"]pagehide['\\\"]\" -- tests/unit/storage.test.ts", "exit_code": 0, "evidence": "3 matches: storage.test.ts:75 window.dispatchEvent(new Event('pagehide')); :85; :101" },
+    { "id": "AC-2.10", "result": "pass", "command": "git grep --untracked -n -E \"\\.onError\\(\" -- tests/unit/storage.test.ts", "exit_code": 0, "evidence": "1 match: tests/unit/storage.test.ts:136:  saver.onError(onError);" },
+    { "id": "AC-2.11", "result": "pass", "command": "git grep --untracked -n -E \"serializeLayout\\(\" -- tests/unit/storage.test.ts", "exit_code": 0, "evidence": "1 match: tests/unit/storage.test.ts:147:  expect(parseLayout(serializeLayout(a))).toEqual(a);" },
+    { "id": "AC-2.12", "result": "pass", "command": "git grep --untracked -n -E \"\\\"format\\\":\\s*\\\"x\\\"\" -- tests/unit/storage.test.ts", "exit_code": 0, "evidence": "1 match: tests/unit/storage.test.ts:151:  expect(() => parseLayout('{\"format\":\"x\"}')).toThrow(LayoutFileError);" }
+  ],
+  "gates": [
+    { "name": "build_command", "command": "npm run build", "exit_code": 0, "tail": "> tsc --noEmit && vite build ... dist/assets/index-DWHKidY4.js 136.50 kB | gzip: 49.67 kB; built in 62ms" },
+    { "name": "type_check_command", "command": "npm run typecheck", "exit_code": 0, "tail": "> tsc --noEmit (no output)" },
+    { "name": "test_command", "command": "npm test && npm run e2e", "exit_code": 0, "tail": "Vitest: Test Files 9 passed (9), Tests 69 passed (69). Playwright: 39 passed, 1 skipped (crop.spec.ts:61 wheel test skipped on mobile-webkit by design) (11.4s)" }
+  ],
+  "consumers": [
+    { "symbol": "createAlbumStore / AlbumStore (src/state/store.ts)", "call_sites": ["src/ui/App.tsx:4,39", "src/ui/Editor.tsx", "src/ui/CellToolbar.tsx", "src/ui/PhotoPanel.tsx", "src/ui/SpreadStrip.tsx", "src/ui/SpreadView.tsx", "src/ui/TemplatePanel.tsx", "tests/e2e/crop.spec.ts:3", "tests/unit/store.test.ts:3"], "all_updated": true },
+    { "symbol": "createAutosaver, restoreBackups (src/storage/autosave.ts)", "call_sites": ["src/ui/App.tsx:5,40,62", "tests/unit/storage.test.ts:5"], "all_updated": true },
+    { "symbol": "db.ts exports (saveAlbum, loadAlbum, listAlbums, deleteAlbum, putPreview, getPreview, hasPreviews, putDirHandle, getDirHandle, requestPersistence, PreviewKind)", "call_sites": ["src/ui/App.tsx:4", "src/ui/AlbumList.tsx:4", "src/ui/PhotoPanel.tsx:9", "src/ui/previews.ts:2", "src/photos/import.ts:4", "src/photos/originals.ts:2", "src/harness.ts:2", "tests/unit/storage.test.ts:6"], "all_updated": true },
+    { "symbol": "layoutFile.ts exports (LayoutFileError, serializeLayout, parseLayout, saveLayoutFile, openLayoutFile)", "call_sites": ["tests/unit/storage.test.ts:7 (no src consumer yet; Editor.tsx keeps save-file/open-file disabled for Phase 8)"], "all_updated": true }
+  ],
+  "removed_behavior": [
+    "The only '-' line in the bundle is in src/main.tsx (render(<main>Конструктор альбому</main>, ...)), which phasecheck attributes to phases 3/4; it is out of scope for this phase. All six phase-2 files are new, so this phase deleted no behavior."
+  ],
+  "blockers": [],
+  "fail_first": {
+    "present": false,
+    "skipped_reason": "The bundle holds only the final tree; no fail-first run of store.test.ts or storage.test.ts was available to the verifier.",
+    "evidence_path": null,
+    "failure_was_assertion": false
+  }
+}

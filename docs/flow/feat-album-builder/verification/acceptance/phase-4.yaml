@@ -1,0 +1,276 @@
+phase: 4
+feature: feat-album-builder
+source: "Phase 4 Completion Criterion, .devflow/plan.md lines 312-321, and the brief's How-it-will-be-observed column for R-1, R-4, R-5, R-6, R-7, R-18, R-19, R-23"
+checks:
+  - id: AC-4.1
+    kind: unit
+    intent: the Phase 4 end-to-end tests pass on both Playwright projects
+    run: npx playwright test tests/e2e/shell.spec.ts tests/e2e/spread.spec.ts
+    expect: exit == 0
+    falsifier: >
+      If either file is missing, or a case fails on desktop-chromium or mobile-webkit (for
+      example the tab Шаблони does not show template-panel), Playwright exits non-zero.
+    blocking: true
+
+  - id: AC-4.2
+    kind: grep
+    intent: shell.spec.ts reloads the page (album list, rename and last opened album survive a reload)
+    run: git grep --untracked -n -E "\.reload\(" -- tests/e2e/shell.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If shell.spec.ts never reloads, nothing proves the album list and the last opened
+      album persist, and this reads 0.
+    covers: [brief:R-4, brief:R-5]
+    blocking: true
+
+  - id: AC-4.3
+    kind: grep
+    intent: shell.spec.ts looks for spread-strip (the four desktop areas at the same time)
+    run: git grep --untracked -n -E "spread-strip['\"]" -- tests/e2e/shell.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the desktop layout case does not check spread-strip, a layout that hides the strip
+      passes and this reads 0.
+    covers: [brief:R-6]
+    blocking: true
+
+  - id: AC-4.4
+    kind: grep
+    intent: spread.spec.ts uses template row3 (a border drag changes cell 0 and leaves cell 2 unchanged)
+    run: git grep --untracked -n -E "['\"]row3['\"]" -- tests/e2e/spread.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If spread.spec.ts never sets row3, the border drag is not tested on the plan's
+      template and this reads 0.
+    covers: [brief:R-18]
+    blocking: true
+
+  - id: AC-4.5
+    kind: grep
+    intent: spread.spec.ts presses Ctrl+Z (one Ctrl+Z restores the widths)
+    run: git grep --untracked -n -E "Control\+[zZ]" -- tests/e2e/spread.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the test undoes through the store instead of the key, the Ctrl+Z binding is not
+      tested and this reads 0.
+    covers: [brief:R-24]
+    blocking: true
+
+  - id: AC-4.6
+    kind: grep
+    intent: spread.spec.ts uses template two (no border handle exists at the fold)
+    run: git grep --untracked -n -E "['\"]two['\"]" -- tests/e2e/spread.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If spread.spec.ts never sets two, a draggable fold is not caught and this reads 0.
+    covers: [brief:R-19]
+    blocking: true
+
+  - id: AC-4.7
+    kind: grep
+    intent: spread.spec.ts counts the guide-fold element (visible by default, absent with showGuides false)
+    run: git grep --untracked -n -E "guide-fold['\"]" -- tests/e2e/spread.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the guides case does not look for guide-fold, a missing fold line passes and this
+      reads 0.
+    covers: [brief:R-23]
+    blocking: true
+
+  - id: AC-4.8
+    kind: grep
+    intent: spread.spec.ts turns showGuides off (no guide element shows then)
+    run: git grep --untracked -n -E "showGuides:\s*false" -- tests/e2e/spread.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the test never turns guides off, guides that ignore the setting pass and this
+      reads 0.
+    covers: [brief:R-23]
+    blocking: true
+
+  - id: AC-4.9
+    kind: browser
+    intent: two created albums and a rename stay in the album list after a reload
+    given: the app at the probe base URL, with an empty album list (a fresh origin)
+    when: >
+      create two albums, rename the second one to "Весілля Б", then reload the page
+    then:
+      - both albums show in the album list
+      - the second album shows the name Весілля Б
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If after the reload the list is empty, holds one album, or shows the old name
+      "Новий альбом" for the renamed one, this fails.
+    covers: [brief:R-4]
+    blocking: true
+
+  - id: AC-4.10
+    kind: browser
+    intent: a deleted album does not come back after a reload
+    given: the album list holds two albums
+    when: >
+      delete one album, accept the confirmation, then reload the page
+    then:
+      - the deleted album is not in the list
+      - the other album is still in the list
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the album is deleted without a confirmation, or it shows again after the reload,
+      this fails.
+    covers: [brief:R-4]
+    blocking: true
+
+  - id: AC-4.11
+    kind: browser
+    intent: the app reopens the album that was open last
+    given: the album list holds albums A and B
+    when: >
+      open album B, then reload the page
+    then:
+      - the editor shows album B, not the album list and not album A
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the reload shows the album list, or opens album A, this fails.
+    covers: [brief:R-5]
+    blocking: true
+
+  - id: AC-4.12
+    kind: browser
+    intent: at 1280x800 the editor shows the photo column, spread, template library and spread strip at the same time
+    given: a desktop viewport of 1280x800, with an album open
+    when: >
+      look at the editor without a click
+    then:
+      - photo-panel is visible on the left
+      - spread-view is visible in the centre
+      - template-panel is visible on the right
+      - spread-strip is visible at the bottom
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If any of the four areas is hidden, collapsed behind a tab, or outside the viewport,
+      or the photo column is not left of the spread, this fails.
+    covers: [brief:R-6]
+    blocking: true
+
+  - id: AC-4.13
+    kind: browser
+    intent: below 900 px the tab Фото shows the photo panel
+    given: an iPhone 13 viewport (390x844), with an album open
+    when: >
+      tap the tab "Фото"
+    then:
+      - spread-view is at full width
+      - photo-panel shows
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the tabs do not exist, the spread is narrower than the viewport, or photo-panel
+      does not show after the tap, this fails.
+    covers: [brief:R-7]
+    blocking: true
+
+  - id: AC-4.14
+    kind: browser
+    intent: below 900 px the tab Шаблони shows the template panel
+    given: an iPhone 13 viewport (390x844), with an album open
+    when: >
+      tap the tab "Шаблони"
+    then:
+      - template-panel shows
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If template-panel does not show after the tap, or it shows together with all other
+      panels as on a computer, this fails.
+    covers: [brief:R-7]
+    blocking: true
+
+  - id: AC-4.15
+    kind: browser
+    intent: below 900 px the tab Розвороти shows the spread strip
+    given: an iPhone 13 viewport (390x844), with an album open
+    when: >
+      tap the tab "Розвороти"
+    then:
+      - spread-strip shows
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If spread-strip does not show after the tap, this fails.
+    covers: [brief:R-7]
+    blocking: true
+
+  - id: AC-4.16
+    kind: browser
+    intent: the album list and the editor show only Ukrainian text
+    given: the album list, then an open album in the editor, on desktop and on the iPhone 13 viewport
+    when: >
+      read every visible label, button, tab and heading
+    then:
+      - every visible string is Ukrainian
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If any visible label is in English (for example Undo, Redo, Create, Delete, Album or
+      Photos), or a raw strings key shows, this fails.
+    covers: [brief:R-1]
+    blocking: true
+
+  - id: AC-4.17
+    kind: browser
+    intent: the spread shows the safe-zone guides and the fold line by default
+    given: a new album open in the editor, at the default settings
+    when: >
+      look at the current spread
+    then:
+      - 2 guide-safe elements are visible
+      - 1 guide-fold element is visible
+      - the bleed area is shaded
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the guides do not show by default, or only one safe-zone rectangle shows for the
+      whole spread, this fails.
+    covers: [brief:R-23]
+    blocking: true
+
+  - id: AC-4.18
+    kind: browser
+    intent: a border drag changes the two neighbouring cells only, and one Ctrl+Z restores it
+    given: >
+      a desktop viewport, an album open, the current spread set to template row3 through
+      window.__store (the template panel is Phase 5)
+    when: >
+      drag the first border 60 CSS px to the right, then press Ctrl+Z once
+    then:
+      - after the drag cell 0 is wider, cell 1 is narrower and cell 2 is unchanged
+      - after Ctrl+Z all three widths are back at their start
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the drag changes cell 2, does not move the border, or needs more than one Ctrl+Z to
+      undo, this fails.
+    covers: [brief:R-18, brief:R-24]
+    blocking: true
+
+  - id: AC-4.19
+    kind: browser
+    intent: the fold between two separate pages is not a draggable border
+    given: >
+      a desktop viewport, an album open, the current spread set to template two through
+      window.__store
+    when: >
+      hover and try to drag at the fold
+    then:
+      - no border handle exists at the fold
+      - the two cells keep their widths
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If a drag handle shows at the fold, or a drag there changes a cell width, this fails.
+    covers: [brief:R-19]
+    blocking: true

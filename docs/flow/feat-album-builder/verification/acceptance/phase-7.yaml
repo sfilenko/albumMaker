@@ -1,0 +1,318 @@
+phase: 7
+feature: feat-album-builder
+source: "Phase 7 Completion Criterion, .devflow/plan.md lines 419-426; the Edge Cases table row E-7 (line 481); and the brief's How-it-will-be-observed column for R-31 to R-37"
+checks:
+  - id: AC-7.1
+    kind: unit
+    intent: the two Phase 7 unit test files pass
+    run: npx vitest run tests/unit/jpeg.test.ts tests/unit/exportPlan.test.ts
+    expect: exit == 0
+    falsifier: >
+      If either file is missing, or an assertion fails (for example a page job of
+      3543x3543 px under the bleed setting), vitest exits non-zero.
+    blocking: true
+
+  - id: AC-7.2
+    kind: unit
+    intent: the Phase 7 export end-to-end test passes on desktop Chromium
+    run: npx playwright test tests/e2e/export.spec.ts --project desktop-chromium
+    expect: exit == 0
+    falsifier: >
+      If the file is missing, or a case fails (for example rot6.jpg exports on its side),
+      Playwright exits non-zero.
+    blocking: true
+
+  - id: AC-7.3
+    kind: grep
+    intent: jpeg.test.ts calls setJpegDpi for both cases (an existing JFIF header and no APP0)
+    run: git grep --untracked -n -E "setJpegDpi\(" -- tests/unit/jpeg.test.ts
+    expect: matches >= 2
+    falsifier: >
+      If jpeg.test.ts tests only one of the two headers, this reads below 2.
+    covers: [brief:R-31]
+    blocking: true
+
+  - id: AC-7.4
+    kind: grep
+    intent: jpeg.test.ts asserts the density bytes 0x01 0x2C (300 dpi)
+    run: git grep --untracked -n -E -i "0x2c|\b1,\s*44\b" -- tests/unit/jpeg.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the test never states the density bytes 1, 44 (0x01 0x2C), a patch that writes the
+      wrong density passes and this reads 0.
+    covers: [brief:R-31]
+    blocking: true
+
+  - id: AC-7.5
+    kind: grep
+    intent: jpeg.test.ts asserts that a missing APP0 makes the file 18 bytes longer
+    run: git grep --untracked -n -E "\b18\b" -- tests/unit/jpeg.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the insert case does not assert the +18 byte length, an insert of a wrong segment
+      size passes and this reads 0.
+    covers: [brief:R-31]
+    blocking: true
+
+  - id: AC-7.6
+    kind: grep
+    intent: exportPlan.test.ts asserts the page-001 region of 306x306 mm
+    run: git grep --untracked -n -E "w:\s*306,\s*h:\s*306" -- tests/unit/exportPlan.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the page region is not asserted, a region that drops the fold-side bleed (303 mm)
+      passes and this reads 0.
+    covers: [brief:R-32]
+    blocking: true
+
+  - id: AC-7.7
+    kind: grep
+    intent: exportPlan.test.ts asserts the 3614 px page size under the bleed setting
+    run: git grep --untracked -n -E "\b3614\b" -- tests/unit/exportPlan.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the bleed page pixel size is not asserted, this reads 0.
+    covers: [brief:R-32]
+    blocking: true
+
+  - id: AC-7.8
+    kind: grep
+    intent: exportPlan.test.ts asserts the 3543 px page size under the trim setting
+    run: git grep --untracked -n -E "\b3543\b" -- tests/unit/exportPlan.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the trim case is absent, this reads 0.
+    covers: [brief:R-32]
+    blocking: true
+
+  - id: AC-7.9
+    kind: grep
+    intent: exportPlan.test.ts tests the single-right book start (28 page jobs, page-001 is the right side of spread 1)
+    run: git grep --untracked -n -E "['\"]single-right['\"]" -- tests/unit/exportPlan.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the single-right case is absent, an export that still writes the unprinted halves
+      passes and this reads 0.
+    covers: [brief:R-30, brief:R-32]
+    blocking: true
+
+  - id: AC-7.10
+    kind: grep
+    intent: exportPlan.test.ts asserts the default album gives 30 page jobs
+    run: git grep --untracked -n -E "(toBe|toHaveLength|toEqual)\(30\)" -- tests/unit/exportPlan.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the page-job count is not asserted, an export that includes the cover pages (32)
+      passes and this reads 0.
+    covers: [brief:R-32, brief:R-33]
+    blocking: true
+
+  - id: AC-7.11
+    kind: grep
+    intent: exportPlan.test.ts asserts the default album gives 15 spread jobs
+    run: git grep --untracked -n -E "(toBe|toHaveLength|toEqual)\(15\)" -- tests/unit/exportPlan.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the spread-job count is not asserted, an export that includes the cover (16) passes
+      and this reads 0.
+    covers: [brief:R-31, brief:R-33]
+    blocking: true
+
+  - id: AC-7.12
+    kind: grep
+    intent: export.spec.ts removes showDirectoryPicker to take the ZIP path
+    run: git grep --untracked -n -E "delete .*showDirectoryPicker|showDirectoryPicker\s*=" -- tests/e2e/export.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If export.spec.ts never touches showDirectoryPicker, the ZIP path is not tested in
+      Chromium and this reads 0.
+    covers: [brief:R-34]
+    blocking: true
+
+  - id: AC-7.13
+    kind: grep
+    intent: export.spec.ts asserts spreads/spread-01.jpg is 7157 px wide
+    run: git grep --untracked -n -E "\b7157\b" -- tests/e2e/export.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the exported spread size is not asserted, this reads 0.
+    covers: [brief:R-31]
+    blocking: true
+
+  - id: AC-7.14
+    kind: grep
+    intent: export.spec.ts exports rot6.jpg (the arrow colour is above the label)
+    run: git grep --untracked -n -E "rot6\.jpg" -- tests/e2e/export.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If export.spec.ts never exports rot6.jpg, an export that ignores EXIF orientation
+      passes and this reads 0.
+    covers: [brief:E-1]
+    blocking: true
+
+  - id: AC-7.15
+    kind: grep
+    intent: export.spec.ts reloads before an export (the export then asks for originals)
+    run: git grep --untracked -n -E "\.reload\(" -- tests/e2e/export.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If export.spec.ts never reloads, the originals are always in memory and the request
+      for originals is not tested, and this reads 0.
+    covers: [brief:R-35]
+    blocking: true
+
+  - id: AC-7.16
+    kind: browser
+    intent: before export the dialog warns about fewer than 24 printed pages
+    given: an album with 11 non-cover spreads (4 spreads deleted from a new album), desktop viewport
+    when: >
+      open the export dialog
+    then:
+      - a warning names the page count 22 and the minimum of 24
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the dialog shows no page-count warning, or counts the cover, this fails.
+    covers: [brief:R-37]
+    blocking: true
+
+  - id: AC-7.17
+    kind: browser
+    intent: before export the dialog lists low-dpi cells and empty cells
+    given: land-1.jpg on spread 1 with template full, and spread 2 left empty
+    when: >
+      open the export dialog
+    then:
+      - a warning names the low-dpi cell on spread 1
+      - a warning names the empty cell on spread 2
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If either warning is missing, this fails.
+    covers: [brief:R-37, brief:E-7]
+    blocking: true
+
+  - id: AC-7.18
+    kind: browser
+    intent: before export the dialog warns about a photo on a half that is not printed, and about a missing photo
+    given: >
+      book start Сторінка 1 — окрема права сторінка, a photo on the left half of spread 1,
+      and a layout photo with no preview and no original (for example a layout file opened
+      without its photos)
+    when: >
+      open the export dialog
+    then:
+      - a warning names the photo on the half that is not printed
+      - a warning names the missing photo
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If either warning is missing, this fails.
+    covers: [brief:R-37]
+    blocking: true
+
+  - id: AC-7.19
+    kind: browser
+    intent: in Chromium the export asks for a folder with showDirectoryPicker
+    given: >
+      desktop Chromium, an album with photos imported in this session, and a page-side stub
+      that records calls to window.showDirectoryPicker (Playwright cannot drive the native
+      folder dialog)
+    when: >
+      start the export
+    then:
+      - showDirectoryPicker is called with mode readwrite
+      - no ZIP download starts
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the export downloads a ZIP in Chromium, or never calls showDirectoryPicker, this
+      fails.
+    covers: [brief:R-34]
+    blocking: true
+
+  - id: AC-7.20
+    kind: browser
+    intent: without showDirectoryPicker the export downloads one ZIP with spreads and pages at print size
+    given: >
+      desktop Chromium with window.showDirectoryPicker deleted before the app loads, an
+      album with photos imported in this session and land-1.jpg across the fold of spread 1
+    when: >
+      start the export and save the download, then read the image sizes and JFIF density
+      of the files in the ZIP
+    then:
+      - one .zip file downloads
+      - spreads/spread-01.jpg is 7157x3614 px and its header gives 300 dpi
+      - pages/page-001.jpg is 3614x3614 px
+      - no file in the ZIP is the cover
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If no ZIP downloads, a size differs, the header gives 72 or 96 dpi, or a cover file is
+      in the ZIP, this fails.
+    covers: [brief:R-31, brief:R-32, brief:R-33, brief:R-34]
+    blocking: true
+
+  - id: AC-7.21
+    kind: browser
+    intent: a photo across the fold continues without a seam in the two page files
+    given: the ZIP of AC-7.20, with land-1.jpg across the fold of spread 1
+    when: >
+      compare the fold-side edge of pages/page-001.jpg with the fold-side edge of
+      pages/page-002.jpg
+    then:
+      - the bleed on the fold side of each page holds the image of the neighbouring page
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the fold-side bleed of a page is background colour or a mirrored copy, this fails.
+    covers: [brief:R-32]
+    blocking: true
+
+  - id: AC-7.22
+    kind: browser
+    intent: after a reload the export asks for the original files, matches them and completes
+    given: an album with the fixtures imported, then the page reloaded (the originals are not in memory)
+    when: >
+      start the export, then choose the fixture files when the app asks for them
+    then:
+      - the app asks the user to choose the original files
+      - after the choice the export completes
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the export fails with an error, writes blank cells, or never asks for the
+      originals, this fails.
+    covers: [brief:R-35]
+    blocking: true
+
+  - id: AC-7.23
+    kind: browser
+    intent: on a phone the export dialog says that full-quality spread export works on a computer
+    given: the mobile-webkit browser with an iPhone 13 viewport, an album open
+    when: >
+      open the export dialog
+    then:
+      - a note says that full-quality export of whole spreads works on a computer
+      - only the pages option is offered
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the note is missing, or the spreads option is offered on the phone, this fails.
+    covers: [brief:R-36]
+    blocking: true
+
+  - id: AC-7.24
+    kind: browser
+    intent: an export makes no network request to another origin
+    given: desktop Chromium, the network log recording from the page load
+    when: >
+      run the ZIP export of AC-7.20
+    then:
+      - every request in the network log goes to the app origin
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If any request goes to another origin (an upload, a CDN script or font), this fails.
+    covers: [brief:R-44]
+    blocking: true

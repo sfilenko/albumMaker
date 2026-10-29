@@ -1,0 +1,196 @@
+{
+  "phase": 6,
+  "feature": "feat-album-builder",
+  "base": "ede4fd30f609c582e8946c7adbeb18b3e939060c",
+  "evidence_sha256": "e2967cbdd8a711766fa834fe53021b0923114609aeb70b6a98710c41a69fa0dd",
+  "probe_kind": "browser",
+  "outcome": "pass_with_deviation",
+  "server": {
+    "started": true,
+    "ready_ms": 94,
+    "port": 5173,
+    "port_source": "declared",
+    "base_url": "http://localhost:5173",
+    "note": "Vite announced http://localhost:5173/, the same as the resolved base_url. Started from D:/personal/Photo/composition with npm run dev -- --port 5173 --strictPort. Stopped with TaskStop and doctor.mjs stop (stopped: true, free_after: true). Desktop checks AC-6.5 to AC-6.13 and three desktop sweep surfaces were driven in the Playwright MCP Chromium browser at 1280x800; photos were added through the real Додати фото file chooser (browser_file_upload) and spreads were seeded through window.__store with applyTemplate/placePhoto, as tests/e2e/settings.spec.ts does. AC-6.14 and the mobile sweep were driven in real WebKit 27.2 with the iPhone 13 device profile (390x664), by a Node script in the scratchpad that uses the project's @playwright/test 1.64.1 against the same server. Two script-side aborts were re-run from a fresh navigation and are not product findings: the first AC-6.5 run stopped at the MCP file-chooser modal before any assertion, and the first AC-6.10 run waited on spread-position, which the desktop editor does not render. The MCP network list is cumulative over the session, so each desktop .net.log holds earlier traffic too; every response in every log is 200 or 304."
+  },
+  "preconditions": [
+    {
+      "what": "The editor shows the phase-6 surfaces: the Налаштування button opens settings-dialog with setting-gap, setting-margin, setting-bleed, setting-safe, setting-bg-ivory/white/black, setting-guides, setting-book-full-spread and setting-book-single-right, and the Перегляд button (action-preview) is present.",
+      "held": true,
+      "evidence": "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/precondition-6.png"
+    }
+  ],
+  "checks": [
+    {
+      "id": "AC-6.5",
+      "result": "pass",
+      "assertions": [
+        { "then": "on spread 1 the screen gap between the two cells is twice the gap at 6 mm", "actual": "spread 1 (two): gap 7.41 px = 6.00 mm at gapMm 6, then 14.81 px = 12.00 mm after setting-gap was filled with 12 (1.2343 px/mm, bleed 3)", "ok": true },
+        { "then": "on spread 2 the gaps between the three cells are wider than at 6 mm", "actual": "spread 2 (row3): gaps [5.99, 6.00] mm before, [12.00, 12.00] mm after; spread 2 was not the selected spread while the value changed", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.5.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.5.spread1.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.5.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.5.net.log"
+      ]
+    },
+    {
+      "id": "AC-6.6",
+      "result": "pass",
+      "assertions": [
+        { "then": "the cell of spread 1 no longer reaches the spread edge", "actual": "spread 1 (full), marginMm 0 -> 10: cell-1-0 inset from the stage edge was 0/0/0/0 px, after the change 16.04/16.04/16.06/16.06 px = 13.00 mm on each side (3 mm bleed + 10 mm margin)", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.6.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.6.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.6.net.log"
+      ]
+    },
+    {
+      "id": "AC-6.7",
+      "result": "pass",
+      "assertions": [
+        { "then": "the default background is ivory f4efe6", "actual": "settings.background = #f4efe6; setting-bg-ivory checked", "ok": true },
+        { "then": "the options are ivory f4efe6, white ffffff and black 1d1d1d", "actual": "3 background radios: Слонова кістка rgb(244,239,230), Біле rgb(255,255,255), Чорне rgb(29,29,29); 0 input[type=color] in the dialog", "ok": true },
+        { "then": "after the change the background of spread 1 and spread 2 is 1d1d1d", "actual": "spread-view background rgb(29,29,29) on spread 1 (two, 2 photos) and on spread 2 (mat); settings.background = #1d1d1d; 0 spreads carry their own background", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.7.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.7.dialog.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.7.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.7.net.log"
+      ]
+    },
+    {
+      "id": "AC-6.8",
+      "result": "pass",
+      "assertions": [
+        { "then": "the cells of both spreads keep the same position and size as before the change", "actual": "marginMm 0 -> 20: spread 1 (mat) 2 cells and spread 2 (solo) 1 cell, max screen difference 0 px in x, y, w and h; model cellRects equal before and after ({x:38,y:38,w:230,h:230} and {x:338,...})", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.8.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.8.spread2.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.8.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.8.net.log"
+      ]
+    },
+    {
+      "id": "AC-6.9",
+      "result": "pass",
+      "assertions": [
+        { "then": "the safe-zone rectangles move inward after the safe-zone change", "actual": "safeMm 10 -> 15 with the stage unchanged (748 px wide): left guide-safe moved from x 272.04 to 278.21 and shrank 345.6 -> 333.26 px; right guide-safe from 642.34 to 648.51", "ok": true },
+        { "then": "the shaded bleed area becomes wider after the bleed change", "actual": "bleedMm 3 -> 5: guide-bleed border width 3.2 px -> 5.6 px; stage height 377.7 -> 380.1 px", "ok": true },
+        { "then": "no guide-safe and no guide-fold element is visible after guides are turned off", "actual": "setting-guides unchecked, showGuides false: 0 guide-* elements in the DOM, 0 visible", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.9.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.9.before-off.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.9.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.9.net.log"
+      ]
+    },
+    {
+      "id": "AC-6.10",
+      "result": "pass",
+      "assertions": [
+        { "then": "the left half of spread 1 shows the not-printed label", "actual": "after setting-book-single-right: spread 1 has not-printed-left with text Не друкується", "ok": true },
+        { "then": "the right half of spread 15 shows the not-printed label", "actual": "spread 15 (the last of 15) has not-printed-right with text Не друкується", "ok": true },
+        { "then": "no other half shows the label", "actual": "scan of all 16 strip items (cover + 15): labels only on spread 1 (L) and spread 15 (R); none on the cover; none anywhere before the change (bookStart full-spread)", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.10.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.10.spread15.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.10.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.10.net.log"
+      ]
+    },
+    {
+      "id": "AC-6.11",
+      "result": "pass",
+      "assertions": [
+        { "then": "every photo that was on spread 1 and spread 15 is still in its cell", "actual": "after a reload the app reopened the AC-6.10 album (bookStart single-right, same 4 photo ids); after setting-book-full-spread: cell-1-0/1 data-photo and img alt land-1.jpg, land-2.jpg; cell-15-0/1 land-3.jpg, land-4.jpg, the same ids as before the switch", "ok": true },
+        { "then": "no half shows the not-printed label", "actual": "scan of all 16 strip items: 0 not-printed-* elements", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.11.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.11.spread15.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.11.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.11.net.log"
+      ]
+    },
+    {
+      "id": "AC-6.12",
+      "result": "pass",
+      "assertions": [
+        { "then": "the preview fills the screen", "actual": "preview is position fixed, inset 0, z-index 50, box 0,0 1280x800 = the viewport; the editor is unmounted; preview has focus", "ok": true },
+        { "then": "no guide-safe, guide-fold or shaded bleed element exists", "actual": "0 elements match [data-testid^=guide-], .guide-bleed, .guide-safe, .guide-fold (the editor had 4 before)", "ok": true },
+        { "then": "the visible area is the 600x300 mm trim area only", "actual": "preview-spread 1248x624 px (aspect 2.0000, 2.08 px/mm = 600x300 mm), overflow hidden; the full cell extends 6.24 px = 3 mm (the bleed) past each edge and is clipped", "ok": true },
+        { "then": "after ArrowRight spread 2 shows", "actual": "data-spread-index 1 -> 2, preview-cell-0 img alt land-1.jpg -> land-2.jpg, preview-position 2 / 15, still 0 guide elements", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.12.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.12.spread1.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.12.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.12.net.log"
+      ]
+    },
+    {
+      "id": "AC-6.13",
+      "result": "pass",
+      "assertions": [
+        { "then": "ArrowLeft shows spread 1", "actual": "preview opened at spread 2 (data-spread-index 2); ArrowLeft -> 1, img land-1.jpg", "ok": true },
+        { "then": "the arrow button shows spread 2", "actual": "click preview-next -> 2, img land-2.jpg; preview-prev -> 1 and preview-next -> 2 again", "ok": true },
+        { "then": "Escape returns to the editor", "actual": "Escape: preview detached (count 0), spread-view visible, editor on spread 2 (cell-2-0)", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.13.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.13.left.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.13.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.13.net.log"
+      ]
+    },
+    {
+      "id": "AC-6.14",
+      "result": "substituted",
+      "deviation": "Playwright 1.64.1 WebKit can tap but cannot send a native touch move, so no real finger swipe was possible. Two equivalent facets were driven in real WebKit 27.2 with the iPhone 13 profile instead: a right-to-left pointer drag through page.mouse, and a right-to-left PointerEvent sequence with pointerType touch dispatched on the preview.",
+      "assertions": [
+        { "then": "spread 2 shows", "actual": "preview opened at spread 1 (1 / 15); right-to-left page.mouse drag -> data-spread-index 2, img land-2.jpg", "ok": true },
+        { "then": "the swipe does not scroll the page (falsifier)", "actual": "preview computed touch-action none; window scroll [0,0,0] before and after the drag", "ok": true },
+        { "then": "a pointerType touch swipe changes the spread (substitute facet)", "actual": "right-to-left touch-type swipe 2 -> 3, left-to-right 3 -> 2; a 30 px move (under the 50 px threshold) left the spread at 2", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.14.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.14.before.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.14.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.14.net.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-6.14.result.json"
+      ]
+    }
+  ],
+  "deviations": [
+    {
+      "kind": "substituted_facet",
+      "check": "AC-6.14",
+      "what": "The swipe was driven as a page.mouse pointer drag and as a dispatched PointerEvent sequence with pointerType touch, in real WebKit with the iPhone 13 profile, not as a native touch gesture.",
+      "why": "Playwright 1.64.1 Touchscreen has only tap(); WebKit has no CDP to send touch moves. The preview handles pointer events only and sets touch-action none, so both facets reach the same handler that a finger swipe reaches."
+    }
+  ],
+  "regression_sweep": [
+    { "surface": "album list (/ after ‹ Альбоми): list loads, open the first album", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "cell toolbar on spread 1: select a photo cell, crop-toggle on, zoom-slider, Escape ends crop, undo/redo", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "template panel and spread strip: apply row3 to spread 3, strip-add, undo", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "mobile editor (WebKit iPhone 13): settings dialog open/close inside the 390 px viewport, tabs templates/spreads/photos, no horizontal overflow", "tripwire_clean": true, "console_errors": [] }
+  ],
+  "lessons_fired": []
+}

@@ -1,0 +1,88 @@
+{
+  "phase": 7,
+  "base": "fafa4154fec507cb3e46ecccc3e9daf562f3dbf7",
+  "feature": "feat-album-builder",
+  "evidence_sha256": "b0c2d11813658994bc0bdb20ec4b6a3168fe170043ed89bd58c4b3cce4daabb2",
+  "diff_stat": "playwright.config.ts | 2 ++; vite.config.ts | 24 +++-; 2 files changed, 25 insertions(+), 1 deletion(-) (tracked files only; 27 new or changed untracked files are shown in full in the bundle)",
+  "status": "pass",
+  "prediction": [
+    "src/export/jpeg.ts exports setJpegDpi(bytes, dpi): finds APP0 JFIF after SOI, writes units=1 at offset 13 and big-endian X/Y density at 14-17; otherwise inserts an 18-byte APP0 JFIF segment after SOI.",
+    "src/export/export.ts exports ExportJob, exportPlan(a), MissingOriginalsError (photoIds), runExport(a, onProgress). exportPlan skips cover spreads, names spreads/spread-NN.jpg, uses printedPages for pages/page-NNN.jpg, bleed region {0,0,300+2b,300+2b} / {300,...}, trim region {b,b,300,300} / {300+b,b,...}, px from mmToPx. runExport: getOriginal per used photo, throws MissingOriginalsError, showDirectoryPicker({mode:'readwrite'}) then export-<album name>/, else fflate ZIP download; one job at a time with onProgress.",
+    "src/export/render.ts exports renderRegion: OffscreenCanvas with HTMLCanvasElement fallback; background fill; each filled cell clipped to its rect (offset by the region) and drawn with sourceRect; JPEG 0.95; setJpegDpi(...,300); bitmap.close(). createImageBitmap with imageOrientation 'from-image' in the loader (E-1).",
+    "src/ui/ExportDialog.tsx: printWarnings list, file counts, start, progress; phone = (pointer: coarse) and width < 900 -> R-36 note and pages option only; on MissingOriginalsError: choose files, matchPhotos, registerOriginals, then a 'Продовжити експорт' button that restarts only on click.",
+    "src/ui/Editor.tsx: an export button that opens ExportDialog.",
+    "src/ui/strings.ts: new Ukrainian strings for the dialog, the warnings, the R-36 note and the continue button.",
+    "tests/unit/jpeg.test.ts: JFIF case bytes 13-17 == 01 01 2C 01 2C; no-APP0 case is +18 bytes.",
+    "tests/unit/exportPlan.test.ts: 15 spread jobs, 30 page jobs, page-001 region {0,0,306,306} at 3614x3614, trim 3543, single-right 28 jobs with page-001 the right side of spread 1, no cover job.",
+    "tests/e2e/export.spec.ts: ZIP path with showDirectoryPicker deleted by an init script, unzip, spread-01 7157x3614, page-001 3614x3614; rot6.jpg upright by pixel colours; reload, then originals chosen via the file chooser, and the export completes.",
+    "Possibly a package.json dependency on fflate."
+  ],
+  "divergences": [
+    {
+      "expected": "runExport(a, onProgress) with the two-argument contract signature, and only ExportJob/exportPlan/MissingOriginalsError/runExport exported from export.ts",
+      "found": "runExport takes a third optional parameter kinds: ExportKind[] = ['spreads','pages'], and export.ts also exports type ExportKind and jobKind(job). The two-argument call is still valid (default covers both kinds). ExportDialog passes the checked kinds.",
+      "explained_by_plan": true,
+      "plan_quote": "Step 5: \"On a phone (see the *Decision Log*), the note of R-36 and only the pages option.\" A pages-only export needs runExport to accept the chosen kinds."
+    },
+    {
+      "expected": "Editor.tsx and strings.ts change only for the export button and export strings",
+      "found": "Editor.tsx and strings.ts in the bundle also carry Banners, PrintSummary, RelinkDialog, missing-photo handling and relink/banner strings. These belong to Phase 8 (phasecheck lists Banners.tsx, RelinkDialog.tsx as phase 8); the tree spans several phases (phasecheck exit 5).",
+      "explained_by_plan": true,
+      "plan_quote": "Overview: \"Phase 8 adds relinking in the interface, the safety banners, the PWA and the GitHub Pages workflow.\""
+    },
+    {
+      "expected": "The originals request uses pickFolder or pickFiles from import.ts",
+      "found": "ExportDialog uses pickFiles plus describeFile and DECODE_LIMIT/mapLimit from src/photos/import.ts (describeFile lives in a phase-3-attributed file) and then matchPhotos and registerOriginals.",
+      "explained_by_plan": true,
+      "plan_quote": "Step 5: \"On MissingOriginalsError, ask the user to choose the originals, match them with matchPhotos, and register them.\""
+    }
+  ],
+  "acceptance": [
+    { "id": "AC-7.1", "result": "pass", "command": "npx vitest run tests/unit/jpeg.test.ts tests/unit/exportPlan.test.ts", "exit_code": 0, "evidence": "Test Files  2 passed (2) / Tests  7 passed (7)" },
+    { "id": "AC-7.2", "result": "pass", "command": "npx playwright test tests/e2e/export.spec.ts --project desktop-chromium", "exit_code": 0, "evidence": "ok rot6.jpg exports upright...; ok the ZIP has spreads/spread-01.jpg at 7157x3614 px and pages/page-001.jpg at 3614x3614 px, both at 300 dpi; ok after a reload the export asks for the originals...; 3 passed (7.1s)" },
+    { "id": "AC-7.3", "result": "pass", "command": "git grep --untracked -n -E \"setJpegDpi\\(\" -- tests/unit/jpeg.test.ts", "exit_code": 0, "evidence": "3 matches: tests/unit/jpeg.test.ts:13 setJpegDpi(JFIF_72, 300); :22 setJpegDpi(NO_APP0, 300); :31" },
+    { "id": "AC-7.4", "result": "pass", "command": "git grep --untracked -n -E -i \"0x2c|\\b1,\\s*44\\b\" -- tests/unit/jpeg.test.ts", "exit_code": 0, "evidence": "2 matches: tests/unit/jpeg.test.ts:14 and :26 toEqual([0x01, 0x01, 0x2c, 0x01, 0x2c])" },
+    { "id": "AC-7.5", "result": "pass", "command": "git grep --untracked -n -E \"\\b18\\b\" -- tests/unit/jpeg.test.ts", "exit_code": 0, "evidence": "5 matches incl. tests/unit/jpeg.test.ts:23 expect(out.length).toBe(NO_APP0.length + 18)" },
+    { "id": "AC-7.6", "result": "pass", "command": "git grep --untracked -n -E \"w:\\s*306,\\s*h:\\s*306\" -- tests/unit/exportPlan.test.ts", "exit_code": 0, "evidence": "2 matches: tests/unit/exportPlan.test.ts:25 regionMm: { x: 0, y: 0, w: 306, h: 306 }, px: { w: 3614, h: 3614 }; :27" },
+    { "id": "AC-7.7", "result": "pass", "command": "git grep --untracked -n -E \"\\b3614\\b\" -- tests/unit/exportPlan.test.ts", "exit_code": 0, "evidence": "3 matches incl. tests/unit/exportPlan.test.ts:25" },
+    { "id": "AC-7.8", "result": "pass", "command": "git grep --untracked -n -E \"\\b3543\\b\" -- tests/unit/exportPlan.test.ts", "exit_code": 0, "evidence": "2 matches: tests/unit/exportPlan.test.ts:35 expect(p1.px).toEqual({ w: 3543, h: 3543 })" },
+    { "id": "AC-7.9", "result": "pass", "command": "git grep --untracked -n -E \"['\\\"]single-right['\\\"]\" -- tests/unit/exportPlan.test.ts", "exit_code": 0, "evidence": "2 matches: tests/unit/exportPlan.test.ts:39-40 updateSettings(createAlbum('x'), { bookStart: 'single-right' })" },
+    { "id": "AC-7.10", "result": "pass", "command": "git grep --untracked -n -E \"(toBe|toHaveLength|toEqual)\\(30\\)\" -- tests/unit/exportPlan.test.ts", "exit_code": 0, "evidence": "1 match: tests/unit/exportPlan.test.ts:12 expect(pages(jobs)).toHaveLength(30)" },
+    { "id": "AC-7.11", "result": "pass", "command": "git grep --untracked -n -E \"(toBe|toHaveLength|toEqual)\\(15\\)\" -- tests/unit/exportPlan.test.ts", "exit_code": 0, "evidence": "2 matches: tests/unit/exportPlan.test.ts:11 and :47 toHaveLength(15)" },
+    { "id": "AC-7.12", "result": "pass", "command": "git grep --untracked -n -E \"delete .*showDirectoryPicker|showDirectoryPicker\\s*=\" -- tests/e2e/export.spec.ts", "exit_code": 0, "evidence": "1 match: tests/e2e/export.spec.ts:16 delete (window as { showDirectoryPicker?: unknown }).showDirectoryPicker;" },
+    { "id": "AC-7.13", "result": "pass", "command": "git grep --untracked -n -E \"\\b7157\\b\" -- tests/e2e/export.spec.ts", "exit_code": 0, "evidence": "2 matches: tests/e2e/export.spec.ts:77 and :134 toEqual({ w: 7157, h: 3614 })" },
+    { "id": "AC-7.14", "result": "pass", "command": "git grep --untracked -n -E \"rot6\\.jpg\" -- tests/e2e/export.spec.ts", "exit_code": 0, "evidence": "2 matches: tests/e2e/export.spec.ts:84-85 albumWithPhoto(page, 'rot6.jpg', 'two')" },
+    { "id": "AC-7.15", "result": "pass", "command": "git grep --untracked -n -E \"\\.reload\\(\" -- tests/e2e/export.spec.ts", "exit_code": 0, "evidence": "1 match: tests/e2e/export.spec.ts:121 await page.reload();" },
+    { "id": "AC-7.16", "result": "delegated_to_probe", "evidence": "browser kind (min-pages warning 22 < 24). Owed by /df:probe phase-7." },
+    { "id": "AC-7.17", "result": "delegated_to_probe", "evidence": "browser kind (low-dpi and empty-cell warnings). Owed by /df:probe phase-7." },
+    { "id": "AC-7.18", "result": "delegated_to_probe", "evidence": "browser kind (unprinted-photo and missing-photo warnings). Owed by /df:probe phase-7." },
+    { "id": "AC-7.19", "result": "delegated_to_probe", "evidence": "browser kind (showDirectoryPicker called with mode readwrite, no ZIP). Owed by /df:probe phase-7. Static: src/export/export.ts runExport calls picker({ mode: 'readwrite' }) when present." },
+    { "id": "AC-7.20", "result": "delegated_to_probe", "evidence": "browser kind (ZIP sizes, 300 dpi, no cover). Owed by /df:probe phase-7." },
+    { "id": "AC-7.21", "result": "delegated_to_probe", "evidence": "browser kind (fold-side bleed holds neighbouring image). Owed by /df:probe phase-7." },
+    { "id": "AC-7.22", "result": "delegated_to_probe", "evidence": "browser kind (originals request after reload, then completion). Owed by /df:probe phase-7." },
+    { "id": "AC-7.23", "result": "delegated_to_probe", "evidence": "browser kind (iPhone 13 note and pages-only option). Owed by /df:probe phase-7." },
+    { "id": "AC-7.24", "result": "delegated_to_probe", "evidence": "browser kind (no cross-origin request during ZIP export). Owed by /df:probe phase-7." }
+  ],
+  "gates": [
+    { "name": "build_command", "command": "npm run build", "exit_code": 0, "tail": "built in 94ms; PWA v2.0.0 mode generateSW precache 8 entries (178.32 KiB) files generated dist/sw.js dist/workbox-9c191d2f.js" },
+    { "name": "type_check_command", "command": "npm run typecheck", "exit_code": 0, "tail": "> album-builder@0.1.0 typecheck\n> tsc --noEmit" },
+    { "name": "test_command", "command": "npm test && npm run e2e", "exit_code": 0, "tail": "Vitest: Test Files 11 passed (11), Tests 77 passed (77). Playwright: 7 skipped, 67 passed (40.3s)" }
+  ],
+  "consumers": [
+    { "symbol": "exportPlan / jobKind / runExport / MissingOriginalsError / ExportKind (src/export/export.ts)", "call_sites": ["src/ui/ExportDialog.tsx:4 (import)", "src/ui/ExportDialog.tsx:55 exportPlan(album)", "src/ui/ExportDialog.tsx:56 jobKind(j)", "src/ui/ExportDialog.tsx:63 runExport(store.album.value, ..., kinds)", "src/ui/ExportDialog.tsx:66 instanceof MissingOriginalsError", "tests/unit/exportPlan.test.ts:2"], "all_updated": true },
+    { "symbol": "renderRegion (src/export/render.ts)", "call_sites": ["src/export/export.ts:135"], "all_updated": true },
+    { "symbol": "setJpegDpi (src/export/jpeg.ts)", "call_sites": ["src/export/render.ts:73", "tests/unit/jpeg.test.ts:13,22,31"], "all_updated": true },
+    { "symbol": "ExportDialog (src/ui/ExportDialog.tsx)", "call_sites": ["src/ui/Editor.tsx:167 <ExportDialog store mobile={phone} onClose>"], "all_updated": true }
+  ],
+  "removed_behavior": [
+    "The only '-' line in the bundle is vite.config.ts 'plugins: [preact()]', replaced by a list that adds VitePWA. That file is attributed to Phase 8 and is out of scope here; preact() is kept.",
+    "src/ui/Editor.tsx and src/ui/strings.ts existed untracked before this phase with different bytes; the bundle shows them in full with only a baseline hash, so the deleted lines cannot be seen. The current files keep every earlier editor action (settings, preview, save/open file, undo/redo, tabs), the typecheck passes, and the full test gate (77 unit, 67 e2e) passes, so no removed behavior that something depends on was found."
+  ],
+  "blockers": [],
+  "fail_first": {
+    "present": false,
+    "skipped_reason": "The bundle has no record of the tests failing before the implementation; the test files are new and untracked, so fail-first evidence cannot be read from the diff.",
+    "evidence_path": null,
+    "failure_was_assertion": false
+  }
+}

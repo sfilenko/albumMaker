@@ -1,0 +1,192 @@
+{
+  "phase": 4,
+  "feature": "feat-album-builder",
+  "base": "f0e1fb0fff2c8f52af3dcad9a450f0636c69f5ed",
+  "evidence_sha256": "38c6d9109a435a9ae59850afa566a57b0725410d0086bbe041527d1f0aa6b5fd",
+  "probe_kind": "browser",
+  "outcome": "pass",
+  "server": {
+    "started": true,
+    "ready_ms": 103,
+    "port": 5173,
+    "port_source": "declared",
+    "base_url": "http://localhost:5173",
+    "note": "Started from D:/personal/Photo/composition with 'npm run dev -- --port 5173 --strictPort'. Vite announced http://localhost:5173/ (ready in 267 ms by its own log); the curl poll answered after 103 ms. Stopped with TaskStop and doctor.mjs stop: free_after true."
+  },
+  "preconditions": [
+    {
+      "what": "The phase-4 album list renders: data-testid=album-list with the create control 'Створити альбом' and the empty note 'Ще немає жодного альбому.' on a fresh origin",
+      "held": true,
+      "evidence": "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.9.png"
+    }
+  ],
+  "checks": [
+    {
+      "id": "AC-4.9",
+      "result": "pass",
+      "assertions": [
+        { "then": "both albums show in the album list", "actual": "after reload album-name list = ['Весілля Б', 'Новий альбом'] (2 items)", "ok": true },
+        { "then": "the second album shows the name Весілля Б", "actual": "renamed the item in list position 2 (the list sorts by last update, so this was the first-created album); after reload it shows 'Весілля Б'", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.9.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.9.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.9.net.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/session-to-4.9.console.log"
+      ]
+    },
+    {
+      "id": "AC-4.10",
+      "result": "pass",
+      "assertions": [
+        { "then": "a confirmation is asked before the delete", "actual": "confirm dialog: 'Видалити альбом «Новий альбом»? Цю дію не можна скасувати.'; accepted", "ok": true },
+        { "then": "the deleted album is not in the list", "actual": "after delete and after reload album-name list = ['Весілля Б']", "ok": true },
+        { "then": "the other album is still in the list", "actual": "'Весілля Б' present after reload", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.10.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.10.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.10.net.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/phase-4.session-errors.console.log"
+      ]
+    },
+    {
+      "id": "AC-4.11",
+      "result": "pass",
+      "assertions": [
+        { "then": "the editor shows album B, not the album list and not album A", "actual": "A='Новий альбом' created and opened first, then B='Весілля Б' opened; after reload editor count 1, album-list count 0, album-title 'Весілля Б'", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.11.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.11.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.11.net.log"
+      ]
+    },
+    {
+      "id": "AC-4.12",
+      "result": "pass",
+      "assertions": [
+        { "then": "photo-panel is visible on the left", "actual": "x=0 w=240 h=608, fully inside 1280x800", "ok": true },
+        { "then": "spread-view is visible in the centre", "actual": "x=256 w=748 h=378, right of photo-panel", "ok": true },
+        { "then": "template-panel is visible on the right", "actual": "x=1020 w=260 h=608", "ok": true },
+        { "then": "spread-strip is visible at the bottom", "actual": "y=660 w=1280 h=140; editor class 'editor desktop', 0 tabs", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.12.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.12.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.12.net.log"
+      ]
+    },
+    {
+      "id": "AC-4.13",
+      "result": "pass",
+      "assertions": [
+        { "then": "the tabs exist", "actual": "role=tab: ['Фото', 'Шаблони', 'Розвороти']; editor class 'editor mobile' at 390x844 (chromium context, isMobile, hasTouch, DPR 3, iPhone UA); tab driven with tap()", "ok": true },
+        { "then": "spread-view is at full width", "actual": "spread-view x=0 w=390, viewport 390", "ok": true },
+        { "then": "photo-panel shows", "actual": "photo-panel visible x=0 w=390 h=160; Фото aria-selected=true. Note: Фото is also the default tab", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.13.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.13.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.13.net.log"
+      ]
+    },
+    {
+      "id": "AC-4.14",
+      "result": "pass",
+      "assertions": [
+        { "then": "template-panel shows", "actual": "template-panel visible w=390 h=555 after tap; photo-panel and spread-strip not in the DOM", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.14.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.14.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.14.net.log"
+      ]
+    },
+    {
+      "id": "AC-4.15",
+      "result": "pass",
+      "assertions": [
+        { "then": "spread-strip shows", "actual": "spread-strip visible w=390 h=564 after tap; photo-panel and template-panel not in the DOM", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.15.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.15.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.15.net.log"
+      ]
+    },
+    {
+      "id": "AC-4.16",
+      "result": "pass",
+      "assertions": [
+        { "then": "every visible string is Ukrainian", "actual": "desktop editor, desktop list, rename form, mobile editor on each of the 3 tabs, and mobile list: every visible text node, button, tab, heading and aria-label is Ukrainian; no raw strings key. Only Latin text seen: 'Lay Flat' inside one hover-only title attribute of a template card ('Ваш основний варіант. Lay Flat не ховає центр.')", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.16.strings.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.16.desktop-editor.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.16.desktop-list.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.16.mobile.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.16.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.16.net.log"
+      ]
+    },
+    {
+      "id": "AC-4.17",
+      "result": "pass",
+      "assertions": [
+        { "then": "2 guide-safe elements are visible", "actual": "2 visible: x=272 w=346 and x=642 w=346 (one per page), dashed 1px rgba(40,90,200,0.7)", "ok": true },
+        { "then": "1 guide-fold element is visible", "actual": "1 visible at x=630 w=1 h=378 (spread-view x=256 w=748)", "ok": true },
+        { "then": "the bleed area is shaded", "actual": "guide-bleed visible over the spread, 3px solid rgba(200,40,40,0.18) band", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.17.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.17.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.17.net.log"
+      ]
+    },
+    {
+      "id": "AC-4.18",
+      "result": "pass",
+      "assertions": [
+        { "then": "after the drag cell 0 is wider, cell 1 is narrower and cell 2 is unchanged", "actual": "row3 set via window.__store; 2 gutters; widths [245.6, 241.9, 245.6] -> after 60px mouse drag of gutter-0 [305.6, 181.9, 245.6]", "ok": true },
+        { "then": "after Ctrl+Z all three widths are back at their start", "actual": "one keyboard Control+z -> [245.6, 241.9, 245.6]", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.18.after-drag.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.18.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.18.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.18.net.log"
+      ]
+    },
+    {
+      "id": "AC-4.19",
+      "result": "pass",
+      "assertions": [
+        { "then": "no border handle exists at the fold", "actual": "template two set via window.__store; 2 cells, 0 gutter-* elements; elementFromPoint at the fold (x=631) is the spread-view stage, cursor auto; cell0 right=626, cell1 left=634", "ok": true },
+        { "then": "the two cells keep their widths", "actual": "60px mouse drag from the fold: widths [370.3, 370.3] -> [370.3, 370.3]; gutters still 0", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.19.png",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.19.console.log",
+        "D:/personal/Photo/composition/.devflow/evidence/feat-album-builder/AC-4.19.net.log"
+      ]
+    }
+  ],
+  "regression_sweep": [
+    { "surface": "photo import via 'Додати фото' (src/photos/import.ts, unchanged): 2 fixtures, counter 0 / 2 -> 0 / 4", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "template panel click template-row3 on spread 1 (src/model/templates.ts, unchanged): cells 2 -> 3", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "spread strip: select strip-3, strip-add (17 -> 18 items), back to strip-0 (src/model/pages.ts, unchanged)", "tripwire_clean": true, "console_errors": [] }
+  ],
+  "lessons_fired": []
+}

@@ -1,0 +1,57 @@
+# Review: feat-album-builder phase 5
+
+_Reviewed 2026-10-29 · 11 files · `df:devflow-reviewer` · verdict at review time: pass_
+
+## Should fix
+- `should-fix` — **`src/ui/CellToolbar.tsx:10-11`** — `MIN_ZOOM = 1` and `MAX_ZOOM = 8` are copies of the private constants at `src/model/crop.ts:5-6`. The model clamps every crop to its own pair (`clampCrop`, `crop.ts:33`). If the model's range changes, the slider still offers the old range: values above the new maximum are clamped away and the thumb jumps back.
+  → export `MIN_ZOOM`/`MAX_ZOOM` from `crop.ts`, the way `LOW_DPI` is already exported (`crop.ts:4`), import them in `CellToolbar.tsx`, and delete the local copies.
+
+- `should-fix` — **`src/ui/SpreadView.tsx:98-107`** and **`src/ui/CellToolbar.tsx:33-42`** — both contain the same "change this cell's crop based on its current crop" operation: an inline cell lookup (`a.spreads.find((s) => s.id === cellRef.spreadId)?.cells[cellRef.cellIndex]`), then `setCrop(a, cellRef, f(c.crop))`, or `a` when the cell is missing. This rebuilds the private `getCell` at `src/model/album.ts:30-32` in the UI. The same lookup is in two more places (`CellToolbar.tsx:25-26`, `Editor.tsx:67`). Neither copy keeps the module promise at `album.ts:1-2` ("or the same Album when nothing changes"). Wheel-down at zoom 1 (`SpreadView.tsx:154`) or a slider set to the value it already has gives a crop with equal values in a new Album object. The store then records an undo step that changes nothing (`store.ts:41-46` checks only for identity).
+  → add `updateCrop(a: Album, ref: CellRef, fn: (c: Crop) => Crop): Album` to `album.ts`, built from `getCell` and `setCell` the way `setCrop` (`album.ts:94-98`) is: `const cell = getCell(a, ref); if (!cell) return a;`. Also return `a` when `fn(cell.crop)` has equal `cx`, `cy` and `zoom`. Then make both UI sites a single `store.dispatch((a) => updateCrop(a, cellRef, f), { coalesce: key })`.
+
+- `should-fix` — **`tests/e2e/crop.spec.ts:3,9,21,31`** — declares its own `DevWindow = Window & { __store: AlbumStore }` and imports `AlbumStore` from `src/state/store` to read the dev store. The global `Window.__store?` from `src/ui/App.tsx:13-17` is already visible to tests (tsconfig includes `src` and `tests`), and every other spec uses it as `window.__store!` (`spread.spec.ts:16,79`, `shell.spec.ts:48`, `dnd.spec.ts:25`). Two ways to reach one handle will drift. If the global declaration changes, this spec keeps its own copy.
+  → delete `DevWindow` and the `AlbumStore` import, and write `window.__store!` as the other specs do.
+
+- `should-fix` — **`tests/e2e/dnd.spec.ts:68-84`** — the tap-to-place tests use `locator.click()`. Playwright sends that as a mouse event, also in the `mobile-webkit` project, so `startDrag` takes the `pointerType === 'mouse'` branch (`dnd.ts:57`). No test in the suite runs the touch branch: the 250 ms long-press timer, the 8 px slop, or the `touchmove` suppression (`dnd.ts:93-96,120-122,138`). Consider a regression where a touch `pointerdown` starts the drag at once, or where the timer's `begin` makes `up` call `swallowNextClick` on a short tap. Either one breaks tap-to-place on phones, and these tests stay green.
+  → in the tap test, use `.tap()` when `test.info().project.name === 'mobile-webkit'` (or when the context has touch). Add one touch case that holds for more than 250 ms and then moves, to cover the long-press drag.
+
+## Suggestions
+- **`src/ui/Editor.tsx:76`** — `!ref || !cropping || ref.cellIndex !== cropping.cellIndex || ref.spreadId !== cropping.spreadId` is a hand copy of `sameRef` (`SpreadView.tsx:22`), which is private to that file. → move `sameRef` to a shared place, for example next to `CellRef` in `src/model/types.ts` or in a small `ui` helper, and write `if (!ref || !sameRef(cropping, ref)) setCropping(null);`.
+
+- **`src/ui/TemplatePanel.tsx:14,33-41`** and **`src/ui/SpreadStrip.tsx:33,59-72`** — the same miniature is drawn in two places: a local `pct` helper, the `.mini` span with `aspectRatio: canvas.w / canvas.h` and the album background, and one absolutely placed `.mini-cell` for each `cellRects` rect. Both draw "this layout at the current settings", so a change to one (gap, margin, bleed, the fold line) is a change to both. They already differ: only the template copy draws `.mini-fold`. → extract a `LayoutMini({ rects, canvas, background, children? })` component. Let the strip pass the photo for each cell, and make the fold line an explicit prop.
+
+- **`src/ui/PhotoPanel.tsx:14`** — `hasFolderPicker` asks the same question as `pickFolder` (`src/photos/import.ts:36-37`), with a different expression (`'showDirectoryPicker' in window` against the `DirPickerWindow` property read). → export `hasFolderPicker()` from `import.ts`, next to `pickFolder`, and let `pickFolder` use it.
+
+- **`src/ui/PhotoPanel.tsx:61-65`** — `files.find((f) => ids.get(f) === m.id)!` searches the whole file list again for each meta and needs a non-null assertion. → create the inverse map once: `const byId = new Map([...ids].map(([f, id]) => [id, f]))`, then `registerOriginals(new Map(metas.map((m) => [m.id, byId.get(m.id)!])))`. Or remove the inverse entirely: key `ids` by id from the start.
+
+- **`src/ui/strings.ts:63`** and **`src/ui/SpreadView.tsx:189`** — `lowDpi` has the threshold `200` as text, but the code compares against `LOW_DPI` (`crop.ts:4`). The badge text `{n} dpi` is written in `SpreadView`, but `strings.ts:1` says every visible string is in that file. → change it to `lowDpi: (dpi: number, min: number) => …щонайменше ${min}`, pass `LOW_DPI`, and add a `dpiBadge(n)` key for the badge.
+
+- **`src/ui/strings.ts:57`** — `spreadNumber` is not used anywhere in `src`. The strip label (`SpreadStrip.tsx:73`) is only the bare index, so a screen reader announces a strip button as "3". → use `strings.spreadNumber(index)` as the `aria-label` of each non-cover `StripItem`, or delete the key.
+
+- **`src/ui/SpreadStrip.tsx:35-46`** — the drop-target effect calls `onSelect`, but its dependencies are only `[store, index]`. So it keeps the `onSelect` from the first render. This is safe today only because `Editor.select` (`Editor.tsx:60-64`) reads `store.album.value` again and uses only state setters. → add `onSelect` to the dependencies, or keep it in a ref, so that a later change to `select` does not silently use the old function.
+
+- **`src/ui/SpreadView.tsx:79-194`** — `CellBox` is the drop target, the pan/pinch handler, the wheel zoom, the double-tap detector, the tap-to-place handler and the renderer, all in one function. → move the crop gestures (lines 81-84 and 98-155) into a `useCropGestures(store, cellRef, meta, rect, scale, cropping)` hook that returns the four handlers.
+
+- **`tests/e2e/crop.spec.ts:94-95`** — `set('0')` then `zoom toBe(1)` tests the browser, not the app. A range input changes `value = '0'` to its `min` before any handler runs, so the assertion holds even if the app's clamp is removed. The model clamp is already covered at `tests/unit/crop.test.ts:42-44`. → delete that half or rename the test. Use the space for a case this spec can catch: one slider drag (many `input` events and then one `change`) is one undo step, and two drags in a row are two steps. That guards the `gesture.current` reset at `CellToolbar.tsx:59`.
+
+- **`tests/e2e/dnd.spec.ts:41`** — the interpolation is written as one 150-character expression. → calculate `ax, ay, bx, by` (the centres) first, as `spread.spec.ts:29-34` does with `x`/`y`.
+
+## Verifier follow-up
+- `armedPhoto` (`src/ui/dnd.ts:13`) is a module-level signal. Nothing clears it when the `Editor` unmounts or when an undo removes the armed photo. `CellBox` places whatever id it holds (`SpreadView.tsx:178-181`). So: arm a photo in album A, go back, open album B, tap a cell. The cell gets a `photoId` that is not in `album.photos`, and it renders as empty while `photoUsage` counts it. A cleanup in `Editor` (`useEffect(() => () => { armedPhoto.value = null; }, [])`) and a membership check before `placePhoto` would close this. No runtime check plans to drive it.
+- The double-tap detector at `SpreadView.tsx:142-145` treats every non-mouse `pointerup` as a tap. This includes `pointercancel` (line 170), the end of a pan or pinch, and the end of a cell drag that lands on this cell. It has no distance check. Also, the pinch baseline at line 129 is set once per gesture, so a finger that lifts and touches down again zooms against a stale `dist`. No row in the runtime coverage list drives double-tap crop entry or pinch zoom. AC-5.20 names move and zoom without a device.
+- The touch long-press drag (250 ms hold, 8 px slop, `dnd.ts:2-3`) is not named by any runtime row. AC-5.14 drives tap-to-place, and AC-5.13/15/16 do not say touch.
+
+## Summary
+Four should-fix items and no must-fix item. The two worth fixing first are both in the crop path. `CellToolbar` keeps a second copy of the model's zoom range. The crop "update from current" operation is written twice in the UI, and it rebuilds `album.ts`'s private `getCell`. Neither copy returns the same Album when nothing changes, so no-op wheel or slider input makes empty undo steps. The other two are a second way to reach the dev store in `crop.spec.ts`, and no e2e test running the touch pointer branch of `dnd.ts`. The crop and touch-gesture correctness notes are under Verifier follow-up because a verifier has ruled. I had a runtime coverage list and used it to drop follow-ups that the probe already plans to drive.
+
+I read all 11 changed files in full, plus the untouched neighbours `src/ui/AlbumList.tsx`, `App.tsx`, `previews.ts`, `src/model/album.ts`, `crop.ts`, `types.ts`, `templates.ts`, `src/state/store.ts`, `src/photos/import.ts`, `originals.ts`, `src/harness.ts`, and `tests/e2e/spread.spec.ts`, `shell.spec.ts`, `import.spec.ts`. `lessons.mjs match` exited 0. The project has no lessons file, so no lesson fired. The base has none of these files tracked, so I could not read their history, and I judged them against their neighbours.
+
+Leak note: the prompt included the Phase 5 section of the plan, marked "for scope only". I used it only to confirm which files are in scope. It did not change any finding. I deliberately raised nothing about how the coalesce keys compare to the plan's wording.
+
+## Orchestrator notes
+
+The `/df:cycle` driver wrote these notes after `/df:probe phase-5`. The reviewer did not write them. Source: `.devflow/probe/feat-album-builder/phase-5.json` (`outcome: pass`, 21/21 checks, `evidence.current: true`).
+
+- **`armedPhoto` stays set after the editor closes (`dnd.ts:13`, `SpreadView.tsx:178-181`): nothing has driven it.** AC-5.14 and AC-5.28 arm a photo in one album only ("tap photo-land-2.jpg (armed-bar: ...), tap cell-1-0"). No check arms a photo, opens a different album and then taps a cell. `/df:probe phase-5` with that sequence would drive it.
+- **The double-tap detector and the pinch baseline (`SpreadView.tsx:129`, `142-145`, `170`): nothing has driven them.** AC-5.20 entered crop mode with a mouse ("dblclick -> cell has class cropping"), and zoomed with the wheel and the slider. No check uses touch double-tap, pinch, or a finger that lifts and touches down again. `/df:probe phase-5` with touch gestures in WebKit would drive them.
+- **The touch long-press drag (`dnd.ts:2-3`): nothing has driven it.** AC-5.14 drove tap-to-place in WebKit iPhone 13. No check or `regression_sweep` surface holds a 250 ms press and then drags. `/df:probe phase-5` with a touch long-press would drive it.

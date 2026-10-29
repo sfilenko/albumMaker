@@ -1,0 +1,88 @@
+{
+  "phase": 6,
+  "feature": "feat-album-builder",
+  "base": "ede4fd30f609c582e8946c7adbeb18b3e939060c",
+  "evidence_sha256": "bfcc6de3db1f3db3a6e21daf6b9de5c72469a8ce29b30398200c4e3eb11013c0",
+  "status": "pass",
+  "diff_stat": "(no tracked changes); 7 new/untracked files shown in full: src/ui/Editor.tsx, src/ui/PreviewMode.tsx, src/ui/SettingsDialog.tsx, src/ui/SpreadView.tsx (phase 4, out of scope), src/ui/strings.ts, src/ui/styles.css, tests/e2e/settings.spec.ts",
+  "prediction": [
+    "New src/ui/SettingsDialog.tsx: gapMm 0-20, marginMm 0-30, background with 3 options (#f4efe6, #ffffff, #1d1d1d, no free picker), bleedMm 0-5, safeMm 0-20, showGuides checkbox, bookStart ('full-spread' / 'single-right'), pageExport ('bleed' / 'trim' labelled 'З вильотом, 3614×3614 px' / 'Без вильоту, 3543×3543 px'). Each field dispatches updateSettings with coalesce 'settings:<field>'. Close button / Escape.",
+    "New src/ui/PreviewMode.tsx: full-screen fixed overlay, spread clipped to the 600x300 trim area (offset by bleedMm), no guide-safe / guide-fold / bleed shade, prev/next arrow buttons, keydown ArrowLeft/ArrowRight/Escape (removed on unmount), swipe via pointer or touch events, not-printed side painted as blank paper (sideIsPrinted). Uses cellRects and photo previews.",
+    "src/ui/Editor.tsx: top-bar buttons for settings and preview with test ids; state for dialog and preview; preview starts at the current spread.",
+    "src/ui/strings.ts: Ukrainian strings for every new label (field names, the two book-start labels, the two export labels, preview close).",
+    "src/ui/styles.css: settings dialog and preview styles.",
+    "New tests/e2e/settings.spec.ts: gap 12 mm on 'two' checked via window.__store cellRects and screen distance; margin does not change 'mat'; single-right shows not-printed label on left half of spread 1 and a switch back keeps photos; preview ArrowRight shows next spread and no guide element exists. Runs on desktop-chromium and mobile-webkit.",
+    "No model changes expected; model functions are consumed, not changed. SpreadView may be touched only for reuse (phase 4 file).",
+    "Gates: npm run build, npm run typecheck, npm test && npm run e2e exit 0; lint is none."
+  ],
+  "divergences": [
+    {
+      "expected": "Only the six declared files change.",
+      "found": "src/ui/SpreadView.tsx is also in the bundle; it exports CellPhoto, which PreviewMode.tsx imports (PreviewMode.tsx:8). phasecheck attributes the file to phase 4 and the orchestrator marked it out of scope.",
+      "explained_by_plan": true,
+      "plan_quote": "Write `PreviewMode.tsx`: full screen, trim area only, no guides, one spread at a time ... (reuse of the cell photo renderer is the natural way to render the trim area; the file itself is attributed to Phase 4 by phasecheck and is out of scope here)"
+    },
+    {
+      "expected": "Export label fixed text 'З вильотом, 3614×3614 px'.",
+      "found": "SettingsDialog computes the label from mmToPx(PAGE_W + 2 * bleedMm); with the default bleed 3 mm this gives round(306 * 300/25.4) = 3614, and the trim label mmToPx(300) = 3543, so the default text matches the plan. The bleed label follows a changed bleed value.",
+      "explained_by_plan": true,
+      "plan_quote": "сторінки для експорту (\"З вильотом, 3614×3614 px\" / \"Без вильоту, 3543×3543 px\")"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-6.1",
+      "result": "pass",
+      "command": "npx playwright test tests/e2e/settings.spec.ts",
+      "exit_code": 0,
+      "evidence": "acceptance.mjs run tail: 'ok ... [desktop-chromium] ... (5 cases)', 'ok ... [mobile-webkit] ... (5 cases)', '10 passed (4.4s)'"
+    },
+    {
+      "id": "AC-6.2",
+      "result": "pass",
+      "command": "git grep --untracked -n -E \"__store\\.(album|dispatch)\" -- tests/e2e/settings.spec.ts",
+      "exit_code": 0,
+      "evidence": "5 matches, e.g. 'tests/e2e/settings.spec.ts:44:      const a = (window as DevWindow).__store.album.value;' and ':27: (window as DevWindow).__store.dispatch((a) => {'"
+    },
+    {
+      "id": "AC-6.3",
+      "result": "pass",
+      "command": "git grep --untracked -n -E \"['\\\"]mat['\\\"]|template-mat\" -- tests/e2e/settings.spec.ts",
+      "exit_code": 0,
+      "evidence": "1 match: 'tests/e2e/settings.spec.ts:79:  await fillSpread(page, 1, 'mat', [0]);'"
+    },
+    {
+      "id": "AC-6.4",
+      "result": "pass",
+      "command": "git grep --untracked -n -E \"['\\\"]ArrowRight['\\\"]\" -- tests/e2e/settings.spec.ts",
+      "exit_code": 0,
+      "evidence": "1 match: 'tests/e2e/settings.spec.ts:126:  await page.keyboard.press('ArrowRight');'"
+    },
+    { "id": "AC-6.5", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-6 owes the proof (gap 12 mm widens gaps on spread 1 'two' and spread 2 'row3'). Statically: SpreadView uses cellRects(spread.layout, album.settings) per spread." },
+    { "id": "AC-6.6", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-6 owes the proof (margin 10 mm moves the 'full' cell off the edge). Statically: SettingsDialog field setting-margin dispatches updateSettings({marginMm})." },
+    { "id": "AC-6.7", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-6 owes the proof. Statically: SettingsDialog BACKGROUNDS = #f4efe6, #ffffff, #1d1d1d as radio inputs, no free picker; stage background = settings.background." },
+    { "id": "AC-6.8", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-6 owes the proof (margin 20 mm leaves 'mat' and 'solo' cells unchanged). e2e case 'the margin setting does not change the cells of mat' passes for 'mat' only." },
+    { "id": "AC-6.9", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-6 owes the proof (safe 15 mm, bleed 5 mm, guides off). Statically: setting-safe, setting-bleed, setting-guides exist; SpreadView renders guides only when s.showGuides." },
+    { "id": "AC-6.10", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-6 owes the proof (not-printed label on spread 1 left and spread 15 right). e2e case covers spread 1 left only." },
+    { "id": "AC-6.11", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-6 owes the proof. e2e case checks data-photo on cell-1-0 and cell-1-1 after switch back." },
+    { "id": "AC-6.12", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-6 owes the proof. Statically: .preview is position fixed inset 0; preview-stage is TRIM_W x TRIM_H with cells offset by -bleedMm and overflow hidden; no guide element rendered; e2e asserts [data-testid^=guide-] count 0." },
+    { "id": "AC-6.13", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-6 owes the proof. Statically: PreviewMode capture-phase keydown handles ArrowLeft/ArrowRight/Escape; preview-prev / preview-next buttons call go(-1)/go(1)." },
+    { "id": "AC-6.14", "result": "delegated_to_probe", "evidence": "browser kind; /df:probe phase-6 owes the proof with a real touch swipe on mobile-webkit. The e2e swipe case uses page.mouse, not touch; implementation is pointer-event based with touch-action: none on .preview." }
+  ],
+  "gates": [
+    { "name": "build_command", "command": "npm run build", "exit_code": 0, "tail": "dist/assets/index-CuBVBhzd.js   142.90 kB | gzip: 51.45 kB\n✓ built in 60ms" },
+    { "name": "type_check_command", "command": "npm run typecheck", "exit_code": 0, "tail": "> tsc --noEmit (no output)" },
+    { "name": "test_command", "command": "npm test && npm run e2e", "exit_code": 0, "tail": "Vitest: Test Files 9 passed (9), Tests 69 passed (69). Playwright: 1 skipped, 49 passed (15.8s). The skip is crop.spec.ts:61 on mobile-webkit (phase 5 file)." }
+  ],
+  "consumers": [
+    { "symbol": "Editor (src/ui/Editor.tsx, props { store, onClose } unchanged)", "call_sites": ["src/ui/App.tsx:77"], "all_updated": true },
+    { "symbol": "CellPhoto (src/ui/SpreadView.tsx:45, exported)", "call_sites": ["src/ui/SpreadView.tsx:187", "src/ui/PreviewMode.tsx:116"], "all_updated": true },
+    { "symbol": "PreviewMode (new)", "call_sites": ["src/ui/Editor.tsx:76"], "all_updated": true },
+    { "symbol": "SettingsDialog (new)", "call_sites": ["src/ui/Editor.tsx:108"], "all_updated": true },
+    { "symbol": "strings (new keys settingsTitle..closePreview)", "call_sites": ["src/ui/SettingsDialog.tsx", "src/ui/PreviewMode.tsx", "src/ui/Editor.tsx"], "all_updated": true }
+  ],
+  "removed_behavior": [
+    "The bundle has no '-' lines: every file is shown as a new file. Editor.tsx, strings.ts and styles.css existed untracked before this phase with different bytes, and only their baseline hash was recorded, so the deleted lines cannot be read. The Editor comment ('Later phases connect these: export (7), the layout file (8)') suggests that settings and preview were removed from the disabled placeholder button list and became live buttons. tsc --strict and the full test gate pass, so no removed strings key or export is still referenced."
+  ],
+  "blockers": []
+}

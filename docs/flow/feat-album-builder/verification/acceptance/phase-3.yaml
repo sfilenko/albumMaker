@@ -1,0 +1,164 @@
+phase: 3
+feature: feat-album-builder
+source: "Phase 3 Completion Criterion, .devflow/plan.md lines 273-282"
+checks:
+  - id: AC-3.1
+    kind: unit
+    intent: the two Phase 3 unit test files pass
+    run: npx vitest run tests/unit/import.test.ts tests/unit/match.test.ts
+    expect: exit == 0
+    falsifier: >
+      If either file is missing, or an assertion fails (for example isAccepted('A.JPG') is
+      false because the extension test is case-sensitive), vitest exits non-zero.
+    blocking: true
+
+  - id: AC-3.2
+    kind: unit
+    intent: the Phase 3 import end-to-end test passes
+    run: npx playwright test tests/e2e/import.spec.ts
+    expect: exit == 0
+    falsifier: >
+      If the file is missing, the harness is not loaded at ?harness=import, or an assertion
+      fails (for example rot6.jpg imports as 1800x1200), Playwright exits non-zero.
+    blocking: true
+
+  - id: AC-3.3
+    kind: grep
+    intent: import.test.ts asserts that an upper-case A.JPG is accepted
+    run: git grep --untracked -n -E "isAccepted\(['\"]A\.JPG['\"]\)" -- tests/unit/import.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the test checks only lower-case names, a case-sensitive filter passes and this
+      reads 0.
+    covers: [brief:R-9]
+    blocking: true
+
+  - id: AC-3.4
+    kind: grep
+    intent: import.test.ts asserts that notes.txt is not accepted
+    run: git grep --untracked -n -E "isAccepted\(['\"]notes\.txt['\"]\)" -- tests/unit/import.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the rejection of a non-photo file is not tested, this reads 0.
+    covers: [brief:R-9]
+    blocking: true
+
+  - id: AC-3.5
+    kind: grep
+    intent: import.test.ts asserts that x.heic is not accepted
+    run: git grep --untracked -n -E "isAccepted\(['\"]x\.heic['\"]\)" -- tests/unit/import.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the HEIC case is not tested, a filter that accepts every image type passes and
+      this reads 0.
+    covers: [brief:E-4]
+    blocking: true
+
+  - id: AC-3.6
+    kind: grep
+    intent: import.test.ts tests mapLimit (limit 2 never runs more than 2 at the same time and keeps the input order)
+    run: git grep --untracked -n -E "mapLimit\(" -- tests/unit/import.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If import.test.ts never calls mapLimit, the concurrency limit of E-3 is not tested and
+      this reads 0.
+    covers: [brief:E-3]
+    blocking: true
+
+  - id: AC-3.7
+    kind: grep
+    intent: a Phase 3 import test asserts the capture date of rot6.jpg is 2026-06-14T15:30:00
+    run: git grep --untracked -n -E "2026-06-14T15:30:00" -- tests/unit/import.test.ts tests/e2e/import.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If no import test states the takenAt value, a reader that ignores DateTimeOriginal
+      passes and this reads 0.
+    covers: [brief:E-1, brief:R-27]
+    blocking: true
+
+  - id: AC-3.8
+    kind: grep
+    intent: a Phase 3 import test asserts that rot6.jpg is 1800 high after orientation (1200x1800)
+    run: git grep --untracked -n -E "height:\s*1800\b|\b1200\b.*\b1800\b" -- tests/unit/import.test.ts tests/e2e/import.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the oriented size is not asserted, an import that keeps the stored 1800x1200
+      landscape size passes and this reads 0.
+    covers: [brief:E-1]
+    blocking: true
+
+  - id: AC-3.9
+    kind: grep
+    intent: a Phase 3 import test reads the skipped list (notes.txt is in skipped)
+    run: git grep --untracked -n -E "\.skipped\b|skipped\s*\}" -- tests/unit/import.test.ts tests/e2e/import.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If no test reads skipped, a skipped file that is never reported to the user passes
+      and this reads 0.
+    covers: [brief:R-9]
+    blocking: true
+
+  - id: AC-3.10
+    kind: grep
+    intent: a Phase 3 import test reads a thumb preview (each imported photo has a full and a thumb preview)
+    run: git grep --untracked -n -E "['\"]thumb['\"]" -- tests/unit/import.test.ts tests/e2e/import.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If no test reads the thumb preview, an import that writes only one screen copy passes
+      and this reads 0.
+    covers: [brief:R-28]
+    blocking: true
+
+  - id: AC-3.11
+    kind: grep
+    intent: match.test.ts matches IMG_1.HEIC 4032x3024 against IMG_1.jpg 2016x1512
+    run: git grep --untracked -n -E "IMG_1\.HEIC" -- tests/unit/match.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the stem-and-ratio level of the ladder is not tested, this reads 0.
+    covers: [brief:R-27]
+    blocking: true
+
+  - id: AC-3.12
+    kind: grep
+    intent: match.test.ts gives wanted and candidate photos a capture date (a renamed file with the same date and ratio matches)
+    run: git grep --untracked -n -E "takenAt:\s*['\"][0-9]" -- tests/unit/match.test.ts
+    expect: matches >= 2
+    falsifier: >
+      If fewer than two photos in match.test.ts carry a capture date, the date-and-ratio
+      level for a renamed file is not tested and this reads below 2.
+    covers: [brief:R-27]
+    blocking: true
+
+  - id: AC-3.13
+    kind: grep
+    intent: match.test.ts has two wanted IMG_0001.jpg photos (they match the candidates of the same sizes in either order)
+    run: git grep --untracked -n -E "IMG_0001\.jpg" -- tests/unit/match.test.ts
+    expect: matches >= 2
+    falsifier: >
+      If the duplicate-name case is absent, a matcher that swaps two IMG_0001.jpg photos
+      passes and this reads below 2.
+    covers: [brief:E-2]
+    blocking: true
+
+  - id: AC-3.14
+    kind: grep
+    intent: match.test.ts reads the ambiguous result (two equal candidates for one photo give ambiguous)
+    run: git grep --untracked -n -E "\.ambiguous\b|ambiguous\s*\}" -- tests/unit/match.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the test never reads ambiguous, a matcher that picks the first of two equal
+      candidates passes and this reads 0.
+    covers: [brief:E-2]
+    blocking: true
+
+  - id: AC-3.15
+    kind: grep
+    intent: import.spec.ts records network requests (and finds none to another origin)
+    run: git grep --untracked -n -E "\.on\(['\"]request(finished)?['\"]" -- tests/e2e/import.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the end-to-end test does not record requests, an import that uploads a photo or
+      loads a library from a CDN passes and this reads 0.
+    covers: [brief:R-44]
+    blocking: true

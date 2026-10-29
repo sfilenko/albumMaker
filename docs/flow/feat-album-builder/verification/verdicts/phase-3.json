@@ -1,0 +1,82 @@
+{
+  "phase": 3,
+  "feature": "feat-album-builder",
+  "base": "045c9592e924460cff2aa1b62f9aefdf35f4fca7",
+  "evidence_sha256": "a9c6a80b16cf3d5a6ce216e77b4395c974ffab389d76222a713f8eb1ad675ef2",
+  "status": "pass",
+  "diff_stat": "src/main.tsx | 10 +++++++++- (1 file changed, 9 insertions(+), 1 deletion(-)); plus 26 new/untracked files shown in full, of which 9 are attributed to phase 3",
+  "prediction": [
+    "src/photos/import.ts (new): isAccepted case-insensitive (.jpg/.jpeg at least; rejects .heic, .txt); mapLimit bounded concurrency with input order kept; pickFolder (showDirectoryPicker, null on cancel); pickFiles; importFiles filters with isAccepted, skipped names, mapLimit(files, 2), createImageBitmap(file, { imageOrientation: 'from-image' }), exifr DateTimeOriginal -> 'YYYY-MM-DDTHH:mm:ss' without zone, full 1600 px and thumb 320 px JPEG 0.85 via putPreview, bitmap.close(), onProgress, ids map keeps existing id else newId().",
+    "src/photos/originals.ts (new): registerOriginals memory map; getOriginal memory first, then getDirHandle + queryPermission/requestPermission({mode:'read'}), match by name and size, else null.",
+    "src/photos/match.ts (new): Candidate; matchPhotos ladder name+size, name+pixel size, stem+ratio(+date when both), date+ratio; unique pairs only; >=2 candidates -> ambiguous; rest missing.",
+    "src/harness.ts (new): sets window.__importFiles (maybe a preview helper) for e2e.",
+    "src/main.tsx (modify): dynamic import of ./harness only when import.meta.env.DEV and ?harness=import.",
+    "src/storage/db.ts (modify): putPreview stores { type, bytes: ArrayBuffer }; getPreview rebuilds Blob; signatures unchanged.",
+    "tests/unit/import.test.ts: isAccepted A.JPG/notes.txt/x.heic; mapLimit peak 2 and order.",
+    "tests/unit/match.test.ts: IMG_1.HEIC vs IMG_1.jpg; renamed with same date+ratio; two IMG_0001.jpg either order; ambiguous.",
+    "tests/e2e/import.spec.ts: ?harness=import, rot6.jpg 1200x1800 + takenAt 2026-06-14T15:30:00, notes.txt skipped, full+thumb previews, page.on('request') with no other origin.",
+    "package.json may need exifr (not in Files list); putPreview/getPreview consumers (storage.test.ts) must still pass."
+  ],
+  "divergences": [
+    {
+      "expected": "main.tsx changes only to load ./harness under DEV and ?harness=import",
+      "found": "main.tsx also imports App from ./ui/App and ./ui/styles.css and renders <App /> in the else branch (replacing the placeholder <main>). That is phase 4 work in a file shared between phases; phasecheck exit 5 reports that the tree spans several phases.",
+      "explained_by_plan": true,
+      "plan_quote": "Phases 4 to 6 build the user interface on top of these modules: the shell and spread view, then the editing interactions, then settings and preview."
+    },
+    {
+      "expected": "harness.ts exposes window.__importFiles",
+      "found": "harness.ts exposes __importFiles and also __previewSize and __importResult, and mounts a file input (data-testid harness-input); the e2e test drives the input and reads __importResult and __previewSize. Development-only test surface.",
+      "explained_by_plan": true,
+      "plan_quote": "Write `harness.ts`, loaded by `main.tsx` only when `import.meta.env.DEV` and `?harness=import`. It exposes `window.__importFiles` for the end-to-end test."
+    },
+    {
+      "expected": "skipped holds the files that isAccepted rejects",
+      "found": "importFiles also pushes the name of an accepted file that createImageBitmap or putPreview fails on into skipped (catch block), instead of failing the whole import.",
+      "explained_by_plan": true,
+      "plan_quote": "importFiles(files: File[], ...): Promise<{ metas: PhotoMeta[]; skipped: string[] }> ... `isAccepted('x.heic')` is false, so the file is in `skipped`"
+    },
+    {
+      "expected": "putPreview/getPreview take kind: 'full' | 'thumb'",
+      "found": "db.ts exports a type alias PreviewKind = 'full' | 'thumb' and uses it in the signatures; structurally identical to the contract.",
+      "explained_by_plan": true,
+      "plan_quote": "The signatures of `putPreview` and `getPreview` do not change."
+    }
+  ],
+  "acceptance": [
+    { "id": "AC-3.1", "result": "pass", "command": "npx vitest run tests/unit/import.test.ts tests/unit/match.test.ts", "exit_code": 0, "evidence": "Test Files  2 passed (2); Tests  10 passed (10)" },
+    { "id": "AC-3.2", "result": "pass", "command": "npx playwright test tests/e2e/import.spec.ts", "exit_code": 0, "evidence": "ok [desktop-chromium] and ok [mobile-webkit] import.spec.ts:7:1; 2 passed (3.2s)" },
+    { "id": "AC-3.3", "result": "pass", "command": "git grep --untracked -n -E \"isAccepted\\(['\\\"]A\\.JPG['\\\"]\\)\" -- tests/unit/import.test.ts", "exit_code": 0, "evidence": "tests/unit/import.test.ts:5:  expect(isAccepted('A.JPG')).toBe(true); (1 match)" },
+    { "id": "AC-3.4", "result": "pass", "command": "git grep --untracked -n -E \"isAccepted\\(['\\\"]notes\\.txt['\\\"]\\)\" -- tests/unit/import.test.ts", "exit_code": 0, "evidence": "tests/unit/import.test.ts:12:  expect(isAccepted('notes.txt')).toBe(false); (1 match)" },
+    { "id": "AC-3.5", "result": "pass", "command": "git grep --untracked -n -E \"isAccepted\\(['\\\"]x\\.heic['\\\"]\\)\" -- tests/unit/import.test.ts", "exit_code": 0, "evidence": "tests/unit/import.test.ts:13:  expect(isAccepted('x.heic')).toBe(false); (1 match)" },
+    { "id": "AC-3.6", "result": "pass", "command": "git grep --untracked -n -E \"mapLimit\\(\" -- tests/unit/import.test.ts", "exit_code": 0, "evidence": "tests/unit/import.test.ts:21 and :33 (2 matches); test asserts peak toBe(2) and order" },
+    { "id": "AC-3.7", "result": "pass", "command": "git grep --untracked -n -E \"2026-06-14T15:30:00\" -- tests/unit/import.test.ts tests/e2e/import.spec.ts", "exit_code": 0, "evidence": "tests/e2e/import.spec.ts:26: expect(rot6).toMatchObject({ width: 1200, height: 1800, takenAt: '2026-06-14T15:30:00' }); (1 match)" },
+    { "id": "AC-3.8", "result": "pass", "command": "git grep --untracked -n -E \"height:\\s*1800\\b|\\b1200\\b.*\\b1800\\b\" -- tests/unit/import.test.ts tests/e2e/import.spec.ts", "exit_code": 0, "evidence": "tests/e2e/import.spec.ts:26 (1 match)" },
+    { "id": "AC-3.9", "result": "pass", "command": "git grep --untracked -n -E \"\\.skipped\\b|skipped\\s*\\}\" -- tests/unit/import.test.ts tests/e2e/import.spec.ts", "exit_code": 0, "evidence": "tests/e2e/import.spec.ts:22:  expect(result.skipped).toEqual(['notes.txt']); (1 match)" },
+    { "id": "AC-3.10", "result": "pass", "command": "git grep --untracked -n -E \"['\\\"]thumb['\\\"]\" -- tests/unit/import.test.ts tests/e2e/import.spec.ts", "exit_code": 0, "evidence": "tests/e2e/import.spec.ts:31: __previewSize!(id, 'full'), __previewSize!(id, 'thumb') (1 match)" },
+    { "id": "AC-3.11", "result": "pass", "command": "git grep --untracked -n -E \"IMG_1\\.HEIC\" -- tests/unit/match.test.ts", "exit_code": 0, "evidence": "tests/unit/match.test.ts:23 and :25 (2 matches)" },
+    { "id": "AC-3.12", "result": "pass", "command": "git grep --untracked -n -E \"takenAt:\\s*['\\\"][0-9]\" -- tests/unit/match.test.ts", "exit_code": 0, "evidence": "tests/unit/match.test.ts:33, :35, :36 (3 matches, need >= 2)" },
+    { "id": "AC-3.13", "result": "pass", "command": "git grep --untracked -n -E \"IMG_0001\\.jpg\" -- tests/unit/match.test.ts", "exit_code": 0, "evidence": "tests/unit/match.test.ts:42-55 (6 matches, need >= 2)" },
+    { "id": "AC-3.14", "result": "pass", "command": "git grep --untracked -n -E \"\\.ambiguous\\b|ambiguous\\s*\\}\" -- tests/unit/match.test.ts", "exit_code": 0, "evidence": "tests/unit/match.test.ts:57:  expect(r.ambiguous).toEqual(['a']); (1 match)" },
+    { "id": "AC-3.15", "result": "pass", "command": "git grep --untracked -n -E \"\\.on\\(['\\\"]request(finished)?['\\\"]\" -- tests/e2e/import.spec.ts", "exit_code": 0, "evidence": "tests/e2e/import.spec.ts:12:  page.on('request', (r) => { (1 match); spec ends with expect(outside).toEqual([])" }
+  ],
+  "gates": [
+    { "name": "build_command", "command": "npm run build", "exit_code": 0, "tail": "tsc --noEmit && vite build ... dist/assets/index-DWHKidY4.js 136.50 kB ... built in 65ms" },
+    { "name": "type_check_command", "command": "npm run typecheck", "exit_code": 0, "tail": "> tsc --noEmit (no output)" },
+    { "name": "test_command", "command": "npm test && npm run e2e", "exit_code": 0, "tail": "Vitest: Test Files 9 passed (9), Tests 69 passed (69). Playwright: 39 passed, 1 skipped (crop.spec.ts:61 on mobile-webkit, a phase 5 test.skip with a stated reason)" }
+  ],
+  "consumers": [
+    { "symbol": "putPreview (src/storage/db.ts, storage format changed to { type, bytes })", "call_sites": ["src/photos/import.ts:126", "tests/unit/storage.test.ts:44", "tests/unit/storage.test.ts:45"], "all_updated": true },
+    { "symbol": "getPreview (src/storage/db.ts, now rebuilds Blob from bytes)", "call_sites": ["src/harness.ts:16", "src/ui/previews.ts:12", "tests/unit/storage.test.ts:49", "tests/unit/storage.test.ts:50"], "all_updated": true },
+    { "symbol": "PreviewKind (new type export, src/storage/db.ts)", "call_sites": ["src/harness.ts:4", "src/photos/import.ts:6", "src/ui/previews.ts:3"], "all_updated": true },
+    { "symbol": "importFiles / pickFiles / pickFolder (new)", "call_sites": ["src/harness.ts:15", "src/harness.ts:23", "src/ui/PhotoPanel.tsx:64 (phase 4/5 consumer, passes ids map)"], "all_updated": true },
+    { "symbol": "registerOriginals (new)", "call_sites": ["src/ui/PhotoPanel.tsx:65"], "all_updated": true },
+    { "symbol": "getOriginal, matchPhotos (new)", "call_sites": ["tests/unit/match.test.ts (matchPhotos); getOriginal has no consumer yet (Phase 7 export)"], "all_updated": true }
+  ],
+  "removed_behavior": [
+    "src/main.tsx: '-render(<main>Конструктор альбому</main>, ...)' removed the placeholder page. It is replaced by <App /> (phase 4) and by the harness under DEV + ?harness=import. tests/e2e/smoke.spec.ts 'app loads' still passes in both projects.",
+    "src/storage/db.ts existed untracked before this phase with different bytes; the bundle shows only the new full file, so the deleted lines are not visible. By the plan, the earlier version stored the Blob directly in 'previews'. Any preview rows written in the old Blob format would read back as a Blob of undefined bytes; no release exists yet and Playwright uses its own origin, so nothing observable depends on the old format. No other '-' lines are in the bundle."
+  ],
+  "blockers": [],
+  "fail_first": { "present": false, "skipped_reason": "No fail-first evidence was given to the verifier; tests were judged only on the current tree.", "evidence_path": null, "failure_was_assertion": false }
+}

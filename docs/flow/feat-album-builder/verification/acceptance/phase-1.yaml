@@ -1,0 +1,185 @@
+phase: 1
+feature: feat-album-builder
+source: "Phase 1 Completion Criterion, .devflow/plan.md lines 201-213, and the Edge Cases table rows E-8, E-10, E-11 (lines 482-485)"
+checks:
+  - id: AC-1.1
+    kind: unit
+    intent: the four Phase 1 unit test files pass
+    run: npx vitest run tests/unit/layout.test.ts tests/unit/crop.test.ts tests/unit/album.test.ts tests/unit/pages.test.ts
+    expect: exit == 0
+    falsifier: >
+      If any of the four files is missing, or any assertion in them fails (for example a
+      cellRects result without the 3 mm bleed extension), vitest exits non-zero.
+    blocking: true
+
+  - id: AC-1.2
+    kind: grep
+    intent: layout.test.ts asserts that template full at the default settings is one 606x306 mm cell
+    run: git grep --untracked -n -E "w:\s*606,\s*h:\s*306" -- tests/unit/layout.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If layout.test.ts never states the 606x306 cell rectangle (for example it only checks
+      the cell count, or it states the 600x300 trim size), this reads 0.
+    covers: [brief:R-2]
+    blocking: true
+
+  - id: AC-1.3
+    kind: grep
+    intent: layout.test.ts asserts that template two gives a right cell at x 306, 300x306 mm
+    run: git grep --untracked -n -E "x:\s*306,\s*y:\s*0,\s*w:\s*300,\s*h:\s*306" -- tests/unit/layout.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the test for template two is absent, or it asserts a right cell that starts at the
+      fold (x 303) instead of after the 6 mm gap plus bleed, this reads 0.
+    covers: [brief:R-2, brief:R-19]
+    blocking: true
+
+  - id: AC-1.4
+    kind: grep
+    intent: layout.test.ts asserts that template mat keeps its own 35 mm margin (right cell at x 338, 230x230 mm)
+    run: git grep --untracked -n -E "x:\s*338,\s*y:\s*38,\s*w:\s*230,\s*h:\s*230" -- tests/unit/layout.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the mat case is absent, or the asserted rectangle uses the album margin instead of
+      padMm 35, this reads 0.
+    covers: [brief:R-14, brief:R-17]
+    blocking: true
+
+  - id: AC-1.5
+    kind: grep
+    intent: layout.test.ts asserts that template full with marginMm 10 gives one 580x280 mm cell at 13,13
+    run: git grep --untracked -n -E "x:\s*13,\s*y:\s*13,\s*w:\s*580,\s*h:\s*280" -- tests/unit/layout.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the margin case is absent, or it asserts a cell that still extends into the bleed
+      (x 0), this reads 0.
+    covers: [brief:R-16]
+    blocking: true
+
+  - id: AC-1.6
+    kind: grep
+    intent: a Phase 1 test asserts the cell counts in TEMPLATES order are 1,2,6,6,3,3,5,3,4,8,2,1
+    run: git grep --untracked -n -E "1,\s*2,\s*6,\s*6,\s*3,\s*3,\s*5,\s*3,\s*4,\s*8,\s*2,\s*1\]" -- tests/unit/layout.test.ts tests/unit/album.test.ts tests/unit/pages.test.ts tests/unit/crop.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If no Phase 1 test states the full list of 12 counts in TEMPLATES order (for example
+      it checks only TEMPLATES.length === 12), this reads 0.
+    covers: [brief:R-14]
+    blocking: true
+
+  - id: AC-1.7
+    kind: grep
+    intent: layout.test.ts calls gutters for both cases the plan names (two gives 0, g8 gives 6)
+    run: git grep --untracked -n -E "gutters\(" -- tests/unit/layout.test.ts
+    expect: matches >= 2
+    falsifier: >
+      If layout.test.ts calls gutters only once or never, one of the two cases (0 for two,
+      6 for g8) is not tested and this reads below 2.
+    covers: [brief:R-18, brief:R-19]
+    blocking: true
+
+  - id: AC-1.8
+    kind: grep
+    intent: layout.test.ts moves a border by -1000 mm
+    run: git grep --untracked -n -E "moveGutter\(.*-1000" -- tests/unit/layout.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the clamp case is absent, or it moves the border by a small delta that never
+      reaches the 20 mm limit, this reads 0.
+    covers: [brief:R-18, brief:E-11]
+    blocking: true
+
+  - id: AC-1.9
+    kind: grep
+    intent: layout.test.ts asserts the clamped first cell of row3 is 23 mm wide (20 mm trim + 3 mm bleed)
+    run: git grep --untracked -n -E "(toBe|toBeCloseTo|toEqual)\(23\b" -- tests/unit/layout.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the clamp is asserted as 20 (the bleed forgotten) or not asserted at all, this
+      reads 0.
+    covers: [brief:R-18, brief:E-11]
+    blocking: true
+
+  - id: AC-1.10
+    kind: grep
+    intent: crop.test.ts asserts effectiveDpi of a 6000x4000 photo on the full spread is 251.5
+    run: git grep --untracked -n -E "251\.5" -- tests/unit/crop.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If crop.test.ts never states 251.5 (for example it divides by the 600 mm trim width
+      and asserts 254), this reads 0.
+    covers: [brief:R-22]
+    blocking: true
+
+  - id: AC-1.11
+    kind: grep
+    intent: crop.test.ts asserts that zoom 2 halves the effective dpi to 125.7
+    run: git grep --untracked -n -E "125\.7" -- tests/unit/crop.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the zoom case is absent, or zoom is not part of the dpi calculation, this reads 0.
+    covers: [brief:R-21, brief:R-22]
+    blocking: true
+
+  - id: AC-1.12
+    kind: grep
+    intent: album.test.ts applies template p12 to a spread (the g8 to p12 case that keeps the first 3 photos in order)
+    run: git grep --untracked -n -E "applyTemplate\(.*['\"]p12['\"]" -- tests/unit/album.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If album.test.ts never applies p12, the 8-to-3 case is not tested and this reads 0.
+    covers: [brief:R-15, brief:E-10]
+    blocking: true
+
+  - id: AC-1.13
+    kind: grep
+    intent: pages.test.ts asserts the default album gives 30 printed pages
+    run: git grep --untracked -n -E "(toBe|toHaveLength|toEqual)\(30\)" -- tests/unit/pages.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the page count is asserted as 32 (the cover counted) or not asserted, this reads 0.
+    covers: [brief:R-3, brief:R-30]
+    blocking: true
+
+  - id: AC-1.14
+    kind: grep
+    intent: pages.test.ts asserts bookStart single-right gives 28 printed pages
+    run: git grep --untracked -n -E "(toBe|toHaveLength|toEqual)\(28\)" -- tests/unit/pages.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the single-right case is absent, or it removes only one half (29 pages), this
+      reads 0.
+    covers: [brief:R-30]
+    blocking: true
+
+  - id: AC-1.15
+    kind: grep
+    intent: pages.test.ts asserts that 11 spreads give the min-pages warning with pages 22
+    run: git grep --untracked -n -E "pages:\s*22\b" -- tests/unit/pages.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the min-pages warning is not asserted with its page count, this reads 0.
+    covers: [brief:R-37]
+    blocking: true
+
+  - id: AC-1.16
+    kind: grep
+    intent: a Phase 1 test switches bookStart back to full-spread (the round trip that leaves every cell unchanged)
+    run: git grep --untracked -n -E "bookStart:\s*['\"]full-spread['\"]" -- tests/unit/album.test.ts tests/unit/pages.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If no test switches bookStart back to full-spread, the round trip is not tested and
+      this reads 0.
+    covers: [brief:R-30]
+    blocking: true
+
+  - id: AC-1.17
+    kind: grep
+    intent: album.test.ts tests removePhoto (E-8, every cell that uses the photo becomes empty)
+    run: git grep --untracked -n -E "removePhoto\(" -- tests/unit/album.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If album.test.ts never calls removePhoto, the E-8 unit test that the plan's Edge Cases
+      table names does not exist and this reads 0.
+    covers: [brief:E-8]
+    blocking: true

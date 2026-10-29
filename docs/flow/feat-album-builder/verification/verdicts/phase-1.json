@@ -1,0 +1,94 @@
+{
+  "phase": 1,
+  "base": "045c9592e924460cff2aa1b62f9aefdf35f4fca7",
+  "feature": "feat-album-builder",
+  "evidence_sha256": "2c625a75a2332d2592f7531b39115cc148b9f4de6bd515b92c7c703f04b81215",
+  "status": "pass",
+  "diff_stat": "src/main.tsx | 10 +++++++++- (1 file changed, 9 insertions(+), 1 deletion(-)); NEW FILES (39), of which 10 are Phase 1",
+  "prediction": [
+    "Exactly 10 new files: src/model/{types,templates,layout,crop,album,pages}.ts and tests/unit/{layout,crop,album,pages}.test.ts. No edit to src/model/units.ts; it is consumed (TRIM_W, TRIM_H, FOLD_X, PAGE_W, canvasSizeMm).",
+    "types.ts: Rect, LayoutNode, SpreadLayout (spread|pages, padMm?), Crop, Cell, TemplateId (12 ids), Spread, BookStart, PageExport, AlbumSettings, PhotoMeta, Album, CellRef, GutterRef; DEFAULT_SETTINGS (gap 6, margin 0, bg #f4efe6, bleed 3, safe 10, showGuides true, full-spread, bleed); EMPTY_CROP {0.5,0.5,1}.",
+    "templates.ts: TEMPLATES (12 entries in order full,two,ex2,ex1,pano,p12,p14,row3,row4,g8,mat,solo with name/note/mine); templateLayout(id) returns a fresh copy each call; cellCount. mat has padMm 35. Cell counts 1,2,6,6,3,3,5,3,4,8,2,1.",
+    "layout.ts: cellRects with margin m, gap g, pages mode left [m,300-g/2] right [300+g/2,600-m], padMm override, bleed shift, extension of trim-edge edges to the canvas edge. gutters (borders inside a tree, not the fold), moveGutter that keeps the pair sum and a 20 mm minimum trim extent, guides (trim, safeLeft, safeRight, foldX).",
+    "crop.ts: LOW_DPI=200, sourceRect, clampCrop, panCrop, zoomCrop (zoom 1..8), effectiveDpi = sw/(cell.w/25.4).",
+    "album.ts: newId, createAlbum (1 cover + 15 spreads on full), addPhotos (numeric localeCompare sort; dedupe?), removePhoto (clears every cell that uses it, removes it from photos), placePhoto (repeats allowed), swapCells, clearCell, setCrop, applyTemplate (old photos in cell order, EMPTY_CROP, extras stay in photos), moveGutterOp, addSpread, removeSpread/moveSpread (cover protected), renameAlbum, updateSettings, photoUsage. Each returns a new Album with a new updatedAt.",
+    "pages.ts: Side, printedPages (full-spread: 2 per non-cover spread; single-right: first right only, last left only), sideIsPrinted, cellSides(rect, bleed), PrintWarning union, printWarnings (min-pages < 24, low-dpi < 200, empty-cell, unprinted-photo, missing-photo).",
+    "Tests: each Completion Criterion bullet as an assertion; a removePhoto test (E-8); a bookStart round trip.",
+    "Gates: build and typecheck pass; test_command = npm test && npm run e2e (the e2e specs of later phases are in the same tree)."
+  ],
+  "divergences": [
+    {
+      "expected": "Each album operation returns a new Album with a new updatedAt (Changed Contracts).",
+      "found": "Operations that change nothing return the same Album reference: removeSpread/moveSpread on the cover, an unknown spreadId or cellIndex (mapSpread/setCell), addPhotos with only known ids, removePhoto of an unknown id (src/model/album.ts:126-145, 166, 172, 235, 242-244). renameAlbum and updateSettings always give a new updatedAt.",
+      "explained_by_plan": true,
+      "plan_quote": "The cover cannot be deleted or moved."
+    },
+    {
+      "expected": "pages.ts exports only the contract symbols.",
+      "found": "pages.ts also exports MIN_PAGES = 24 (src/model/pages.ts:520). It is an extra export with the same value that the plan gives.",
+      "explained_by_plan": true,
+      "plan_quote": "`min-pages` below 24 pages."
+    },
+    {
+      "expected": "printWarnings gives the 5 warning kinds over the album.",
+      "found": "printWarnings skips the cover spread, and gives no empty-cell and no low-dpi warning for a cell that lies only on an unprinted half; such a cell with a photo gives unprinted-photo (src/model/pages.ts:570-586).",
+      "explained_by_plan": true,
+      "plan_quote": "With `single-right`, the first spread's left half and the last spread's right half show as not printed. Photos there stay in their cells and cause an `unprinted-photo` warning."
+    },
+    {
+      "expected": "moveGutter clamps both neighbours at 20 mm.",
+      "found": "moveGutter also returns the layout unchanged when the two neighbours together are below 40 mm in trim space (src/model/layout.ts:479), because no position satisfies both limits.",
+      "explained_by_plan": true,
+      "plan_quote": "`moveGutter` keeps the sum of the two sizes and keeps both trim extents at 20 mm or more."
+    },
+    {
+      "expected": "The bundle holds only Phase 1 files.",
+      "found": "The bundle holds 39 new files and the src/main.tsx edit. The phasecheck attribution assigns all of them except the 10 Phase 1 files to Phases 2-5, so they are out of scope.",
+      "explained_by_plan": true,
+      "plan_quote": "Phase 2 adds the undoable store and all persistence (IndexedDB, autosave, layout file). Phase 3 adds photo import, screen copies (previews) and photo matching. Phases 4 to 6 build the user interface on top of these modules"
+    }
+  ],
+  "acceptance": [
+    { "id": "AC-1.1", "result": "pass", "command": "npx vitest run tests/unit/layout.test.ts tests/unit/crop.test.ts tests/unit/album.test.ts tests/unit/pages.test.ts", "exit_code": 0, "evidence": "Test Files  4 passed (4); Tests  38 passed (38)" },
+    { "id": "AC-1.2", "result": "pass", "command": "git grep --untracked -n -E \"w:\\s*606,\\s*h:\\s*306\" -- tests/unit/layout.test.ts", "exit_code": 0, "evidence": "tests/unit/layout.test.ts:9:  expect(cellRects(templateLayout('full'), s)).toEqual([{ x: 0, y: 0, w: 606, h: 306 }]); (1 match)" },
+    { "id": "AC-1.3", "result": "pass", "command": "git grep --untracked -n -E \"x:\\s*306,\\s*y:\\s*0,\\s*w:\\s*300,\\s*h:\\s*306\" -- tests/unit/layout.test.ts", "exit_code": 0, "evidence": "tests/unit/layout.test.ts:15:    { x: 306, y: 0, w: 300, h: 306 }, (1 match)" },
+    { "id": "AC-1.4", "result": "pass", "command": "git grep --untracked -n -E \"x:\\s*338,\\s*y:\\s*38,\\s*w:\\s*230,\\s*h:\\s*230\" -- tests/unit/layout.test.ts", "exit_code": 0, "evidence": "tests/unit/layout.test.ts:22:    { x: 338, y: 38, w: 230, h: 230 }, (1 match)" },
+    { "id": "AC-1.5", "result": "pass", "command": "git grep --untracked -n -E \"x:\\s*13,\\s*y:\\s*13,\\s*w:\\s*580,\\s*h:\\s*280\" -- tests/unit/layout.test.ts", "exit_code": 0, "evidence": "tests/unit/layout.test.ts:31: ...toEqual([{ x: 13, y: 13, w: 580, h: 280 }]); (1 match)" },
+    { "id": "AC-1.6", "result": "pass", "command": "git grep --untracked -n -E \"1,\\s*2,\\s*6,\\s*6,\\s*3,\\s*3,\\s*5,\\s*3,\\s*4,\\s*8,\\s*2,\\s*1\\]\" -- tests/unit/layout.test.ts tests/unit/album.test.ts tests/unit/pages.test.ts tests/unit/crop.test.ts", "exit_code": 0, "evidence": "tests/unit/layout.test.ts:35: expect(TEMPLATES.map((t) => cellCount(templateLayout(t.id)))).toEqual([1, 2, 6, 6, 3, 3, 5, 3, 4, 8, 2, 1]); (1 match)" },
+    { "id": "AC-1.7", "result": "pass", "command": "git grep --untracked -n -E \"gutters\\(\" -- tests/unit/layout.test.ts", "exit_code": 0, "evidence": "5 matches, including layout.test.ts:56 gutters(templateLayout('two'), s)).toHaveLength(0) and :57 gutters(templateLayout('g8'), s)).toHaveLength(6)" },
+    { "id": "AC-1.8", "result": "pass", "command": "git grep --untracked -n -E \"moveGutter\\(.*-1000\" -- tests/unit/layout.test.ts", "exit_code": 0, "evidence": "tests/unit/layout.test.ts:73:  const r = cellRects(moveGutter(l, g.ref, -1000, s), s); (1 match)" },
+    { "id": "AC-1.9", "result": "pass", "command": "git grep --untracked -n -E \"(toBe|toBeCloseTo|toEqual)\\(23\\b\" -- tests/unit/layout.test.ts", "exit_code": 0, "evidence": "tests/unit/layout.test.ts:75:  expect(r[0].w).toBeCloseTo(23); (1 match)" },
+    { "id": "AC-1.10", "result": "pass", "command": "git grep --untracked -n -E \"251\\.5\" -- tests/unit/crop.test.ts", "exit_code": 0, "evidence": "tests/unit/crop.test.ts:23:  expect(effectiveDpi(6000, 4000, cell, EMPTY_CROP)).toBeCloseTo(251.5, 1); (1 match)" },
+    { "id": "AC-1.11", "result": "pass", "command": "git grep --untracked -n -E \"125\\.7\" -- tests/unit/crop.test.ts", "exit_code": 0, "evidence": "tests/unit/crop.test.ts:27: ...{ cx: 0.5, cy: 0.5, zoom: 2 })).toBeCloseTo(125.7, 1); (1 match)" },
+    { "id": "AC-1.12", "result": "pass", "command": "git grep --untracked -n -E \"applyTemplate\\(.*['\\\"]p12['\\\"]\" -- tests/unit/album.test.ts", "exit_code": 0, "evidence": "tests/unit/album.test.ts:59:  a = applyTemplate(a, sp.id, 'p12'); (1 match)" },
+    { "id": "AC-1.13", "result": "pass", "command": "git grep --untracked -n -E \"(toBe|toHaveLength|toEqual)\\(30\\)\" -- tests/unit/pages.test.ts", "exit_code": 0, "evidence": "tests/unit/pages.test.ts:19:  expect(pages).toHaveLength(30); (1 match)" },
+    { "id": "AC-1.14", "result": "pass", "command": "git grep --untracked -n -E \"(toBe|toHaveLength|toEqual)\\(28\\)\" -- tests/unit/pages.test.ts", "exit_code": 0, "evidence": "tests/unit/pages.test.ts:28:  expect(pages).toHaveLength(28); (1 match)" },
+    { "id": "AC-1.15", "result": "pass", "command": "git grep --untracked -n -E \"pages:\\s*22\\b\" -- tests/unit/pages.test.ts", "exit_code": 0, "evidence": "tests/unit/pages.test.ts:39: ...toContainEqual({ kind: 'min-pages', pages: 22 }); (1 match)" },
+    { "id": "AC-1.16", "result": "pass", "command": "git grep --untracked -n -E \"bookStart:\\s*['\\\"]full-spread['\\\"]\" -- tests/unit/album.test.ts tests/unit/pages.test.ts", "exit_code": 0, "evidence": "tests/unit/album.test.ts:134 and tests/unit/pages.test.ts:49 updateSettings(a, { bookStart: 'full-spread' }) (2 matches)" },
+    { "id": "AC-1.17", "result": "pass", "command": "git grep --untracked -n -E \"removePhoto\\(\" -- tests/unit/album.test.ts", "exit_code": 0, "evidence": "tests/unit/album.test.ts:96:  a = removePhoto(a, 'p1'); (1 match)" }
+  ],
+  "gates": [
+    { "name": "build_command", "command": "npm run build", "exit_code": 0, "tail": "> tsc --noEmit && vite build ... dist/assets/index-DWHKidY4.js 136.50 kB | gzip: 49.67 kB; built in 61ms" },
+    { "name": "type_check_command", "command": "npm run typecheck", "exit_code": 0, "tail": "> tsc --noEmit (no output)" },
+    { "name": "test_command", "command": "npm test && npm run e2e", "exit_code": 0, "tail": "Vitest: Test Files 9 passed (9), Tests 69 passed (69). Playwright: 1 skipped, 39 passed (11.3s); the skip is crop.spec.ts:61 on mobile-webkit (test.skip with a reason: no mouse wheel)." }
+  ],
+  "consumers": [
+    { "symbol": "types.ts (Rect, Cell, CellRef, PhotoMeta, Album, Spread)", "call_sites": ["src/ui/SpreadView.tsx:9", "src/ui/SpreadStrip.tsx:5", "src/ui/PhotoPanel.tsx:5", "src/ui/Editor.tsx:3", "src/ui/dnd.ts:5", "src/ui/CellToolbar.tsx:6", "src/ui/App.tsx:3", "src/ui/AlbumList.tsx:4", "src/storage/layoutFile.ts:2", "src/storage/db.ts:3", "src/storage/autosave.ts:2", "src/photos/import.ts:5", "src/photos/originals.ts:2", "src/photos/match.ts:2", "src/state/store.ts:3"], "all_updated": true },
+    { "symbol": "album.ts operations (createAlbum, renameAlbum, addPhotos, removePhoto, placePhoto, swapCells, clearCell, setCrop, applyTemplate, moveGutterOp, addSpread, removeSpread, moveSpread, photoUsage, newId)", "call_sites": ["src/ui/TemplatePanel.tsx:2", "src/ui/SpreadView.tsx:5", "src/ui/SpreadStrip.tsx:3", "src/ui/PhotoPanel.tsx:4", "src/ui/CellToolbar.tsx:3", "src/ui/AlbumList.tsx:3", "src/photos/import.ts:4"], "all_updated": true },
+    { "symbol": "layout.ts (cellRects, gutters, guides)", "call_sites": ["src/ui/TemplatePanel.tsx:3", "src/ui/SpreadView.tsx:7", "src/ui/SpreadStrip.tsx:4", "src/ui/CellToolbar.tsx:5"], "all_updated": true },
+    { "symbol": "crop.ts (effectiveDpi, LOW_DPI, panCrop, sourceRect, zoomCrop)", "call_sites": ["src/ui/SpreadView.tsx:6", "src/ui/CellToolbar.tsx:4"], "all_updated": true },
+    { "symbol": "pages.ts (cellSides, sideIsPrinted, Side)", "call_sites": ["src/ui/SpreadView.tsx:8"], "all_updated": true },
+    { "symbol": "templates.ts (templateLayout, TEMPLATES, cellCount)", "call_sites": ["src/ui/TemplatePanel.tsx:4", "src/model/album.ts:109"], "all_updated": true }
+  ],
+  "removed_behavior": [
+    "The 10 Phase 1 files are all new; they have no '-' lines.",
+    "The only '-' line in the bundle is src/main.tsx:3 at the base, render(<main>Конструктор альбому</main>, ...). It removed the scaffold placeholder in favour of <App /> and the dev-only import harness. That file belongs to Phase 3 per the attribution, so it is out of scope here. Nothing in Phase 1 depends on the placeholder, and e2e smoke.spec.ts 'app loads' passes on both projects."
+  ],
+  "blockers": [],
+  "fail_first": {
+    "present": false,
+    "skipped_reason": "The phase adds only new modules and new test files. The bundle carries no record of a failing run before the implementation, and I did not find one.",
+    "evidence_path": null,
+    "failure_was_assertion": false
+  }
+}
