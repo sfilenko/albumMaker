@@ -1,5 +1,5 @@
 // Draws one region of a spread at print size: background, then each photo clipped to its cell.
-import { sourceRect } from '../model/crop';
+import { visiblePart } from '../model/crop';
 import { cellRects } from '../model/layout';
 import type { Album, PhotoMeta, Rect, Spread } from '../model/types';
 import { setJpegDpi } from './jpeg';
@@ -53,7 +53,7 @@ export async function renderRegion(
     try {
       // The crop is in the photo's recorded pixels; an original of another size scales with it.
       const s = bitmap.width / meta.width;
-      const src = sourceRect(meta.width, meta.height, r, cell.crop);
+      const { src, dst } = visiblePart(meta.width, meta.height, r, cell.crop);
       const dx = (r.x - regionMm.x) * kx;
       const dy = (r.y - regionMm.y) * ky;
       const dw = r.w * kx;
@@ -62,7 +62,18 @@ export async function renderRegion(
       ctx.beginPath();
       ctx.rect(dx, dy, dw, dh);
       ctx.clip();
-      ctx.drawImage(bitmap, src.sx * s, src.sy * s, src.sw * s, src.sh * s, dx, dy, dw, dh);
+      // A photo under zoom 1 covers only a part of the cell; the background shows around it.
+      ctx.drawImage(
+        bitmap,
+        src.sx * s,
+        src.sy * s,
+        src.sw * s,
+        src.sh * s,
+        dx + dst.x * kx,
+        dy + dst.y * ky,
+        dst.w * kx,
+        dst.h * ky,
+      );
       ctx.restore();
     } finally {
       bitmap.close();

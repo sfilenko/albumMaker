@@ -1,14 +1,11 @@
 // Tools for the selected filled cell: crop mode, zoom, and remove the photo.
 import { useRef } from 'preact/hooks';
 import { clearCell, setCrop } from '../model/album';
-import { zoomCrop } from '../model/crop';
+import { zoomCrop, zoomLimits } from '../model/crop';
 import { cellRects } from '../model/layout';
 import type { CellRef } from '../model/types';
 import type { AlbumStore } from '../state/store';
 import { strings } from './strings';
-
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 8;
 
 export function CellToolbar({
   store,
@@ -29,6 +26,7 @@ export function CellToolbar({
   const gesture = useRef<string | null>(null);
   if (!spread || !cell || !meta) return null;
   const rect = cellRects(spread.layout, album.settings)[cellRef.cellIndex];
+  const limits = zoomLimits(meta.width, meta.height, rect);
 
   const zoomTo = (zoom: number) => {
     gesture.current ??= `crop:zoom:${performance.now()}`;
@@ -51,9 +49,10 @@ export function CellToolbar({
         <input
           type="range"
           data-testid="zoom-slider"
-          min={MIN_ZOOM}
-          max={MAX_ZOOM}
-          step={0.1}
+          min={limits.min}
+          max={limits.max}
+          // The lower limit depends on the photo and the cell, so a fixed step could miss it or 1.
+          step="any"
           value={cell.crop.zoom}
           onInput={(e) => zoomTo(Number((e.target as HTMLInputElement).value))}
           onChange={() => (gesture.current = null)}

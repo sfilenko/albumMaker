@@ -3,7 +3,7 @@
 // this device does not have. Geometry comes from the model, in millimetres.
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { moveGutterOp, placePhoto, setCrop, swapCells } from '../model/album';
-import { effectiveDpi, LOW_DPI, panCrop, sourceRect, zoomCrop } from '../model/crop';
+import { effectiveDpi, LOW_DPI, panCrop, photoBox, zoomCrop } from '../model/crop';
 import { cellRects, guides, gutters } from '../model/layout';
 import { cellSides, sideIsPrinted, type Side } from '../model/pages';
 import type { Cell, CellRef, PhotoMeta, Rect } from '../model/types';
@@ -45,7 +45,7 @@ function useScale(cw: number, ch: number) {
 export function CellPhoto({ meta, rect, cell }: { meta: PhotoMeta; rect: Rect; cell: Cell }) {
   const url = usePreviewUrl(meta.id, 'full');
   if (!url) return null;
-  const { sx, sy, sw, sh } = sourceRect(meta.width, meta.height, rect, cell.crop);
+  const b = photoBox(meta.width, meta.height, rect, cell.crop);
   return (
     <img
       class="cell-photo"
@@ -53,10 +53,10 @@ export function CellPhoto({ meta, rect, cell }: { meta: PhotoMeta; rect: Rect; c
       alt={meta.name}
       draggable={false}
       style={{
-        width: `${(meta.width / sw) * 100}%`,
-        height: `${(meta.height / sh) * 100}%`,
-        left: `${(-sx / sw) * 100}%`,
-        top: `${(-sy / sh) * 100}%`,
+        width: `${(b.w / rect.w) * 100}%`,
+        height: `${(b.h / rect.h) * 100}%`,
+        left: `${(b.x / rect.w) * 100}%`,
+        top: `${(b.y / rect.h) * 100}%`,
       }}
     />
   );

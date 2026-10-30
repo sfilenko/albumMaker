@@ -4,6 +4,8 @@ import type { AlbumStore } from '../../src/state/store';
 
 const LAND_1 = join(import.meta.dirname, '..', 'fixtures', 'land-1.jpg');
 const ALBUM = '/src/model/album.ts';
+const CROP = '/src/model/crop.ts';
+const LAYOUT = '/src/model/layout.ts';
 
 // The open album's store, which the app sets in development builds.
 type DevWindow = Window & { __store: AlbumStore };
@@ -58,7 +60,7 @@ test('in crop mode, a drag of 100 px to the left gives cx above 0.5, and one Ctr
   expect((await crop(page)).cx).toBeCloseTo(0.5, 5);
 });
 
-test('a double-click starts crop mode, wheel zoom never goes below 1, and Escape ends crop mode', async ({ page }) => {
+test('a double-click starts crop mode, wheel zoom goes below 1 and stops at the lower limit, and Escape ends crop mode', async ({ page }) => {
   test.skip(test.info().project.name === 'mobile-webkit', 'Playwright mobile WebKit has no mouse wheel; phones zoom with the slider or a pinch');
   await openAlbumWithLand1(page, 'two');
   const cell = page.getByTestId('cell-1-0');
@@ -69,18 +71,40 @@ test('a double-click starts crop mode, wheel zoom never goes below 1, and Escape
 
   await page.mouse.wheel(0, -300);
   await expect.poll(async () => (await crop(page)).zoom).toBeGreaterThan(1);
+  await page.mouse.wheel(0, 600);
+  await expect.poll(async () => (await crop(page)).zoom).toBeLessThan(1);
   for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 600);
-  await expect.poll(async () => (await crop(page)).zoom).toBe(1);
+  const limit = await page.evaluate(
+    async ([cropPath, layoutPath]) => {
+      const c = await import(cropPath);
+      const l = await import(layoutPath);
+      const a = (window as DevWindow).__store.album.value;
+      const photo = a.photos[0];
+      return c.zoomLimits(photo.width, photo.height, l.cellRects(a.spreads[1].layout, a.settings)[0]).min as number;
+    },
+    [CROP, LAYOUT] as const,
+  );
+  expect(limit).toBeLessThan(1);
+  await expect.poll(async () => (await crop(page)).zoom).toBeCloseTo(limit, 6);
 
   await page.keyboard.press('Escape');
   await expect(cell).not.toHaveClass(/cropping/);
 });
 
-test('the zoom slider goes from 1 to 8 and never below 1', async ({ page }) => {
+test('the zoom slider goes from the lower limit of the photo and the cell to 8', async ({ page }) => {
   await openAlbumWithLand1(page, 'two');
   await page.getByTestId('cell-1-0').click();
   const slider = page.getByTestId('zoom-slider');
-  await expect(slider).toHaveAttribute('min', '1');
+  // Half of the zoom at which the whole photo shows, from the cell and the photo in the store.
+  const limit = await page.evaluate(async (layoutPath) => {
+    const l = await import(layoutPath);
+    const a = (window as DevWindow).__store.album.value;
+    const r = l.cellRects(a.spreads[1].layout, a.settings)[0];
+    const p = a.photos[0];
+    const ratio = r.w / r.h;
+    return Math.min(p.width, p.height * ratio) / Math.max(p.width, p.height * ratio) / 2;
+  }, LAYOUT);
+  expect(Number(await slider.getAttribute('min'))).toBeCloseTo(limit, 6);
   await expect(slider).toHaveAttribute('max', '8');
   // A range input clamps the value to min and max, as a user drag would.
   const set = (v: string) =>
@@ -92,7 +116,7 @@ test('the zoom slider goes from 1 to 8 and never below 1', async ({ page }) => {
   await set('3');
   await expect.poll(async () => (await crop(page)).zoom).toBe(3);
   await set('0');
-  await expect.poll(async () => (await crop(page)).zoom).toBe(1);
+  await expect.poll(async () => (await crop(page)).zoom).toBeCloseTo(limit, 6);
 });
 
 test('"Прибрати фото" empties the cell', async ({ page }) => {
