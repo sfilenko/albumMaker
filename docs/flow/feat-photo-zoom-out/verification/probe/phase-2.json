@@ -1,0 +1,117 @@
+{
+  "phase": 2,
+  "feature": "feat-photo-zoom-out",
+  "base": "41ce9b51f3510ea7935ad7b444fb78dbe490eabb",
+  "evidence_sha256": "61be76c4904e210fa479ea9ca69358a6b961e614a431f6829470486466ca437a",
+  "probe_kind": "browser",
+  "outcome": "pass",
+  "server": {
+    "started": true,
+    "ready_ms": 88,
+    "port": 5173,
+    "port_source": "declared",
+    "base_url": "http://localhost:5173",
+    "note": "Started with 'npm run dev -- --port 5173 --strictPort' from D:/personal/Photo/composition. Vite announced http://localhost:5173/. Stopped with TaskStop and 'doctor.mjs stop --port 5173' (stopped: true, free_after: true). The app reopened an album from an earlier run on this origin at start; each check went back to the album list with the '‹ Альбоми' button and created a new album."
+  },
+  "preconditions": [
+    {
+      "what": "The zoom slider of a selected port-1.jpg cell on template full has step=\"any\" and a min under 1 (the phase replaced MIN_ZOOM=1 and step=0.1 with zoomLimits() and step=\"any\")",
+      "held": true,
+      "evidence": "step=\"any\", min=\"0.1683168316831683\", max=\"8\" (AC-2.13 run, before the drag)"
+    }
+  ],
+  "checks": [
+    {
+      "id": "AC-2.13",
+      "result": "pass",
+      "assertions": [
+        { "then": "the slider min attribute is about 0.168, not 1", "actual": "min=\"0.1683168316831683\"; limit from the brief's rule = 0.1683168316831683", "ok": true },
+        { "then": "the slider max attribute is 8", "actual": "max=\"8\"", "ok": true },
+        { "then": "the whole photo shows, with background bands at the left and the right", "actual": "after a mouse drag of the thumb past the left end: zoom 0.1683168316831683; img box left 0.4158, right 0.5841 of the cell; elementFromPoint in the left band is the cell, cell background rgba(0, 0, 0, 0)", "ok": true },
+        { "then": "the img height is half of the cell height, within 2 %", "actual": "img height / cell height = 0.50000003 (top 0.25, bottom 0.75)", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.13.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.13.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.13.net.log"
+      ]
+    },
+    {
+      "id": "AC-2.14",
+      "result": "pass",
+      "assertions": [
+        { "then": "the zoom in the store goes under 1", "actual": "Chromium context with the iPhone 13 descriptor (390x664, dpr 3, isMobile, hasTouch; maxTouchPoints 1, pointer: coarse). After CDP touchStart/touchMove x10/touchEnd on the slider thumb to its left end: zoom 0.1683168316831683, slider value 0.168316831683168", "ok": true },
+        { "then": "the photo shows whole, with background bands at the left and the right", "actual": "img box left 0.4158, right 0.5841, top 0.2500, bottom 0.7500 of the cell; elementFromPoint in the left band is the cell, cell background rgba(0, 0, 0, 0)", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.14.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.14.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.14.net.log"
+      ]
+    },
+    {
+      "id": "AC-2.15",
+      "result": "pass",
+      "assertions": [
+        { "then": "after the movement, the zoom is under 1", "actual": "zoom 1 before; one mouse drag of the thumb from the zoom-1 position past the left end (12 moves, 3 distinct intermediate zoom values seen): zoom 0.1683168316831683", "ok": true },
+        { "then": "after one undo, the zoom is 1 again", "actual": "one click on the undo button: zoom 1", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.15.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.15.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.15.net.log"
+      ]
+    },
+    {
+      "id": "AC-2.16",
+      "result": "pass",
+      "assertions": [
+        { "then": "the zoom in the store is 1", "actual": "cell-1-0 had no img before; after a mouse drag of photo-port-1.jpg onto cell-1-0 the img alt is port-1.jpg and zoom is 1", "ok": true },
+        { "then": "the img covers the cell, and no band of background shows", "actual": "img box left 0, right 1, top -0.985, bottom 1.985 of the cell", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.16.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.16.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.16.net.log"
+      ]
+    },
+    {
+      "id": "AC-2.17",
+      "result": "pass",
+      "assertions": [
+        { "then": "after each drag, the img box is inside the cell box", "actual": "given: row3, land-1.jpg, slider dragged to min 0.2167755991285403, crop mode, photo dragged to left 0, Escape ended crop mode. gutter-0 drag left: cell width 245.6 -> 171.9, img box left 0, top 0.392, right 0.714, bottom 0.608 (inside). gutter-0 drag right: cell width 171.9 -> 368.4, img box left 0, top 0.337, right 0.49998, bottom 0.663 (inside)", "ok": true },
+        { "then": "after the drag to the right, the img width is half of the cell width, within 2 %", "actual": "img width / cell width = 0.49998", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.17.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.17.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.17.net.log"
+      ]
+    },
+    {
+      "id": "AC-2.18",
+      "result": "pass",
+      "assertions": [
+        { "then": "the zoom in the store is exactly 1", "actual": "zoomed out to 0.1683168316831683, then the slider value set to 1 with input and change events: zoom === 1 (true), slider value \"1\"", "ok": true },
+        { "then": "the img covers the cell with no band", "actual": "img box left 0, right 1, top -0.985, bottom 1.985 of the cell", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.18.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.18.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-2.18.net.log"
+      ]
+    }
+  ],
+  "regression_sweep": [
+    { "surface": "Preview mode (PreviewMode.tsx): open with a zoomed-out photo, prev, next, close", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "Template panel (TemplatePanel.tsx): switch the filled spread from full to two and back", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "Settings dialog: open and close", "tripwire_clean": true, "console_errors": [] }
+  ],
+  "lessons_fired": []
+}

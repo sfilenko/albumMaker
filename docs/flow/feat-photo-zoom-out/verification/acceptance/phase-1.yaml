@@ -1,0 +1,313 @@
+phase: 1
+feature: feat-photo-zoom-out
+source: "Phase 1 Goal, Steps 1-8 and Completion Criterion, .devflow/plan.md; the plan's Edge Cases table; the brief's How-it-will-be-observed column for R-1 to R-5, R-7, R-8"
+checks:
+  - id: AC-1.1
+    kind: unit
+    intent: the crop unit tests pass, with the cases the Completion Criterion lists
+    run: npx vitest run tests/unit/crop.test.ts
+    expect: exit == 0
+    falsifier: >
+      If zoomLimits gives 1 as the minimum, if clampCrop still clamps the zoom to 1, if a
+      zoomed-out photo can leave the cell, or if effectiveDpi still divides by the cell width,
+      a case fails and vitest exits non-zero.
+    covers: [brief:R-2, brief:R-4, brief:R-5, brief:R-8, brief:E-1, brief:E-2, brief:E-3, brief:E-4, brief:E-7]
+    blocking: true
+
+  - id: AC-1.2
+    kind: grep
+    intent: crop.test.ts checks zoomLimits for an 1800x1200 photo (the 150x150 mm cell case, min about 0.333)
+    run: git grep --untracked -n -E "zoomLimits\(1800, ?1200" -- tests/unit/crop.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the test file never calls zoomLimits with the plan's 1800x1200 case, the lower limit
+      of R-2 has no number behind it and this reads 0.
+    covers: [brief:R-2]
+    blocking: true
+
+  - id: AC-1.3
+    kind: grep
+    intent: crop.test.ts checks effectiveDpi for the 1800x1200 photo at the "whole photo" zoom and at the lower limit
+    run: git grep --untracked -n -E "effectiveDpi\(1800, ?1200" -- tests/unit/crop.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the test file never calls effectiveDpi with the plan's 1800x1200 case, the values
+      about 305 and about 610 are untested and this reads 0.
+    covers: [brief:R-8]
+    blocking: true
+
+  - id: AC-1.4
+    kind: grep
+    intent: crop.test.ts reads a crop with zoom 0.01 (a file with a zoom under the limit)
+    run: git grep --untracked -n -E "zoom: ?0\.01" -- tests/unit/crop.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If no test reads a crop under the lower limit, the clamp-on-read of E-3 is untested and
+      this reads 0.
+    covers: [brief:E-3]
+    blocking: true
+
+  - id: AC-1.5
+    kind: grep
+    intent: sourceRect is deleted and nothing calls it
+    run: git grep --untracked -n "sourceRect(" -- src
+    expect: matches == 0
+    falsifier: >
+      If a reader still calls sourceRect, the geometry exists in two places, which the
+      brief's Constraints forbid, and this reads 1 or more.
+    blocking: true
+
+  - id: AC-1.6
+    kind: grep
+    intent: CellPhoto places the img from photoBox
+    run: git grep --untracked -n "photoBox(" -- src/ui/SpreadView.tsx
+    expect: matches >= 1
+    falsifier: >
+      If CellPhoto keeps its own geometry, the editor and the preview can drift from the
+      export, and this reads 0.
+    covers: [brief:R-7]
+    blocking: true
+
+  - id: AC-1.7
+    kind: grep
+    intent: the export draws from visiblePart
+    run: git grep --untracked -n "visiblePart(" -- src/export/render.ts
+    expect: matches >= 1
+    falsifier: >
+      If render.ts calculates its own source and target rectangles, this reads 0.
+    covers: [brief:R-7]
+    blocking: true
+
+  - id: AC-1.8
+    kind: grep
+    intent: the export still fills the whole region with the background before it draws the photos
+    run: git grep --untracked -n "fillRect(0, 0, px.w, px.h)" -- src/export/render.ts
+    expect: matches == 1
+    falsifier: >
+      This row already passes before the build. It guards against removal: if the fill is
+      removed or limited to the cells, the band and the bleed around a zoomed-out photo are
+      not the album background, and this reads 0.
+    covers: [brief:E-5]
+    blocking: true
+
+  - id: AC-1.9
+    kind: unit
+    intent: the crop end-to-end tests pass on both Playwright projects
+    run: npx playwright test tests/e2e/crop.spec.ts
+    expect: exit == 0
+    falsifier: >
+      If the wheel test still expects the zoom to stop at 1, or a crop case fails on
+      desktop-chromium or mobile-webkit, Playwright exits non-zero.
+    covers: [brief:R-3]
+    blocking: true
+
+  - id: AC-1.10
+    kind: grep
+    intent: the wheel test of crop.spec.ts reads a zoom under 1 from the store
+    run: git grep --untracked -n -E "toBeLessThan\(1\)|toBeCloseTo\(0\.3" -- tests/e2e/crop.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the wheel test is not changed to assert a zoom under 1, the wheel half of R-3 is
+      untested and this reads 0.
+    covers: [brief:R-3]
+    blocking: true
+
+  - id: AC-1.11
+    kind: command
+    intent: the test gate of project.md passes, the unit tests and every end-to-end spec
+    run: npm test && npm run e2e
+    expect: exit == 0
+    falsifier: >
+      If another consumer of the crop geometry breaks (the print summary in pages.ts, the
+      export, drag and drop, or the grey box of a photo with no screen copy), a test fails and
+      the command exits non-zero.
+    covers: [brief:E-6]
+    blocking: true
+
+  - id: AC-1.12
+    kind: command
+    intent: the production build passes
+    run: npm run build
+    expect: exit == 0
+    falsifier: >
+      If a consumer of the deleted sourceRect is left, or the build breaks, this exits
+      non-zero.
+    blocking: true
+
+  - id: AC-1.13
+    kind: command
+    intent: the type check passes
+    run: npm run typecheck
+    expect: exit == 0
+    falsifier: >
+      If a caller passes the old sourceRect result to a new function, or a type error is
+      left, tsc exits non-zero.
+    blocking: true
+
+  - id: AC-1.14
+    kind: browser
+    intent: the mouse wheel zooms a portrait photo in a landscape cell out, with background bands at the left and the right, down to half of the "whole photo" size
+    given: a desktop Chromium viewport, an album with port-1.jpg (1200x1800) in cell 0 of spread 1 on template full
+    when: >
+      double-click cell-1-0 to start crop mode, then turn the mouse wheel down until the zoom
+      stops changing
+    then:
+      - while the zoom goes under 1, the cell shows the album background colour at the left and the right of the photo
+      - the img box stays inside the cell box horizontally
+      - at the end, the img height is half of the cell height, within 2 %
+      - the zoom in the store is about 0.168
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the zoom stops at 1, if the img overflows the cell at the left or the right, if the
+      photo shrinks under half of the cell height, or if the area beside the photo is not the
+      background colour, this fails.
+    covers: [brief:R-1, brief:R-2, brief:R-3]
+    blocking: true
+
+  - id: AC-1.15
+    kind: browser
+    intent: a zoomed-out photo moves on its free axis in crop mode and stops at the cell edge
+    given: the state at the end of AC-1.14, still in crop mode
+    when: >
+      drag the photo far to the left, then far to the right
+    then:
+      - the photo moves with the drag
+      - after the drag to the left, the left edge of the img is at the left edge of the cell
+      - after the drag to the right, the right edge of the img is at the right edge of the cell
+      - at no time does the cell edge cut the img
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the photo does not move, if it moves past the cell edge and is cut, or if it stops
+      before it touches the edge, this fails.
+    covers: [brief:R-4]
+    blocking: true
+
+  - id: AC-1.16
+    kind: browser
+    intent: between the "whole photo" zoom and 1, a vertical drag never shows a band at the top or the bottom
+    given: a desktop Chromium viewport, port-1.jpg in cell 0 of spread 1 on template full, in crop mode, at a zoom of about 0.6, set with one mouse.wheel(0, 255) (the zoom slider still stops at 1 in Phase 1)
+    when: >
+      drag the photo far up, then far down
+    then:
+      - the img always covers the cell from its top edge to its bottom edge
+      - no band of background shows at the top or the bottom
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the photo can be dragged so that a band of background shows at the top or the
+      bottom, the free-axis rule leaked into the covered axis, and this fails.
+    covers: [brief:R-5]
+    blocking: true
+
+  - id: AC-1.17
+    kind: browser
+    intent: the full-screen preview shows a zoomed-out photo at the same position in its cell as the editor
+    given: a desktop Chromium viewport, port-1.jpg in cell 0 of spread 1 on template full, zoomed out with the mouse wheel in crop mode, and dragged off the centre
+    when: >
+      note the img box relative to cell-1-0 in the editor, then open the preview
+      (action-preview) on spread 1
+    then:
+      - the img box relative to preview-cell-0 has the same left, top, width and height fractions as in the editor, within 1 %
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the preview shows the photo covering the cell, centred when the editor has it off
+      the centre, or at another size, this fails.
+    covers: [brief:R-7]
+    blocking: true
+
+  - id: AC-1.18
+    kind: browser
+    intent: the print export has the album background colour in the bands beside a zoomed-out photo, and the photo in between
+    given: the album of AC-1.17, with the background setting changed to black #1d1d1d (not the default ivory)
+    when: >
+      export spreads to a ZIP and open spreads/spread-01.jpg
+    then:
+      - a pixel in the wider of the two bands beside the photo is close to #1d1d1d
+      - a pixel at the centre of the photo is not the background colour
+      - the photo's left and right edges are at the same fractions of the cell as in the editor, within 1 %
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the export draws the photo over the whole cell, fills the band with ivory or another
+      colour than the setting, or puts the photo at another position than the editor, this
+      fails.
+    covers: [brief:R-7, brief:E-5]
+    blocking: true
+
+  - id: AC-1.19
+    kind: browser
+    intent: the dpi warning uses the printed size of a zoomed-out photo
+    given: a desktop Chromium viewport, land-1.jpg (1800x1200) in cell 0 of spread 1 on template full
+    when: >
+      read the low-dpi icon at zoom 1, then zoom the photo out to the lower limit with the
+      mouse wheel in crop mode
+    then:
+      - at zoom 1, low-dpi-1-0 shows 74 or 75 dpi
+      - at the lower limit, low-dpi-1-0 shows 198 or 199 dpi
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the dpi still divides by the cell width, the value at the lower limit stays 75, the
+      zoom-1 value, and this fails.
+    covers: [brief:R-8]
+    blocking: true
+
+  - id: AC-1.20
+    kind: browser
+    intent: a two-finger pinch in crop mode zooms the photo under 1
+    given: desktop Chromium with hasTouch, port-1.jpg in cell 0 of spread 1 on template full, in crop mode
+    when: >
+      pinch two fingers together on the cell, driven with CDP Input.dispatchTouchEvent and two
+      touch points (Playwright has no multi-touch API, and mobile-webkit has no CDP)
+    then:
+      - the zoom in the store goes under 1
+      - the photo gets smaller and shows background bands at the left and the right
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the pinch stops at zoom 1, this fails.
+    covers: [brief:R-3]
+    blocking: true
+
+  - id: AC-1.21
+    kind: grep
+    intent: crop.test.ts tests visiblePart
+    run: git grep --untracked -n "visiblePart(" -- tests/unit/crop.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the unit tests never call visiblePart, the E-1, E-2, E-4 and E-7 cases of AC-1.1 have
+      nothing behind them for the export geometry, and this reads 0.
+    covers: [brief:E-1, brief:E-2, brief:E-4, brief:E-7]
+    blocking: true
+
+  - id: AC-1.22
+    kind: grep
+    intent: crop.test.ts tests photoBox
+    run: git grep --untracked -n "photoBox(" -- tests/unit/crop.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the unit tests never call photoBox, the editor and preview geometry is untested and
+      this reads 0.
+    covers: [brief:R-4, brief:R-5]
+    blocking: true
+
+  - id: AC-1.23
+    kind: browser
+    intent: one wheel series that zooms a photo under 1 is one undo step
+    given: a desktop Chromium viewport, port-1.jpg in cell 0 of spread 1 on template full at zoom 1, in crop mode
+    when: >
+      turn the mouse wheel down 4 times with less than 400 ms between turns, wait 1 s, then
+      press Control+z once
+    then:
+      - after the wheel series, the zoom in the store is under 1
+      - after one Control+z, the zoom in the store is 1 again
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If one Control+z gives back only the last wheel turn (the zoom stays under 1), the
+      series is more than one undo step, and this fails.
+    covers: [brief:R-9]
+    blocking: true

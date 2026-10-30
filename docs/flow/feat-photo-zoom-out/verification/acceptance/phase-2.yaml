@@ -1,0 +1,241 @@
+phase: 2
+feature: feat-photo-zoom-out
+source: "Phase 2 Goal, Steps 1-3 and Completion Criterion, .devflow/plan.md; the Decision Log entry on step=any; the brief's How-it-will-be-observed column for R-2, R-3, R-6, R-7, R-9 and E-1"
+checks:
+  - id: AC-2.1
+    kind: unit
+    intent: the zoom-out and crop end-to-end tests pass on both Playwright projects
+    run: npx playwright test tests/e2e/zoom-out.spec.ts tests/e2e/crop.spec.ts
+    expect: exit == 0
+    falsifier: >
+      If a case fails on desktop-chromium or mobile-webkit, Playwright exits non-zero. A
+      missing zoom-out.spec.ts does not fail this row; AC-2.5 catches it.
+    covers: [brief:R-3, brief:R-6, brief:R-7, brief:R-9, brief:E-1, brief:E-5]
+    blocking: true
+
+  - id: AC-2.2
+    kind: grep
+    intent: no UI file keeps its own copy of the zoom limits
+    run: git grep --untracked -n -E "const (MIN|MAX)_ZOOM" -- src/ui
+    expect: matches == 0
+    falsifier: >
+      If CellToolbar.tsx keeps MIN_ZOOM or MAX_ZOOM, the slider limits can drift from the
+      model, and this reads 1 or more.
+    blocking: true
+
+  - id: AC-2.3
+    kind: grep
+    intent: the slider takes its limits from zoomLimits
+    run: git grep --untracked -n "zoomLimits(" -- src/ui/CellToolbar.tsx
+    expect: matches >= 1
+    falsifier: >
+      If the slider gets its min and max another way, this reads 0.
+    covers: [brief:R-3]
+    blocking: true
+
+  - id: AC-2.4
+    kind: grep
+    intent: the slider has step="any"
+    run: git grep --untracked -n "step=\"any\"" -- src/ui/CellToolbar.tsx
+    expect: matches == 1
+    falsifier: >
+      If the slider keeps step={0.1}, it cannot always reach both the lower limit and 1, and
+      this reads 0.
+    covers: [brief:R-3]
+    blocking: true
+
+  - id: AC-2.5
+    kind: grep
+    intent: zoom-out.spec.ts uses the portrait fixture port-1.jpg
+    run: git grep --untracked -n "port-1.jpg" -- tests/e2e/zoom-out.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the spec never uses the portrait fixture, the bands at the left and the right are
+      not tested and this reads 0.
+    covers: [brief:R-1]
+    blocking: true
+
+  - id: AC-2.6
+    kind: grep
+    intent: zoom-out.spec.ts presses undo after a zoom-out
+    run: git grep --untracked -n -i -E "Control(OrMeta)?\+z|getByTestId\(.undo.\)" -- tests/e2e/zoom-out.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the spec never undoes, R-9 is untested and this reads 0.
+    covers: [brief:R-9]
+    blocking: true
+
+  - id: AC-2.7
+    kind: grep
+    intent: crop.spec.ts no longer asserts that the slider minimum is 1
+    run: git grep --untracked -n "toHaveAttribute('min', '1')" -- tests/e2e/crop.spec.ts
+    expect: matches == 0
+    falsifier: >
+      If the old slider test is kept, it asserts the behaviour this feature removes, and this
+      reads 1.
+    covers: [brief:R-3]
+    blocking: true
+
+  - id: AC-2.8
+    kind: grep
+    intent: zoom-out.spec.ts checks the preview
+    run: git grep --untracked -n "preview-cell-" -- tests/e2e/zoom-out.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the spec never opens the preview, the preview half of R-7 is untested and this
+      reads 0.
+    covers: [brief:R-7]
+    blocking: true
+
+  - id: AC-2.9
+    kind: grep
+    intent: zoom-out.spec.ts checks the exported JPG
+    run: git grep --untracked -n -E "unzipSync|spread-01\.jpg" -- tests/e2e/zoom-out.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the spec never reads the export, the export half of R-7 and E-5 is untested and this
+      reads 0.
+    covers: [brief:R-7, brief:E-5]
+    blocking: true
+
+  - id: AC-2.10
+    kind: grep
+    intent: zoom-out.spec.ts drags a border between two cells
+    run: git grep --untracked -n "gutter-" -- tests/e2e/zoom-out.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the spec never drags a gutter, E-1 has no end-to-end test and this reads 0.
+    covers: [brief:E-1]
+    blocking: true
+
+  - id: AC-2.11
+    kind: command
+    intent: the production build passes
+    run: npm run build
+    expect: exit == 0
+    falsifier: >
+      If the build breaks, this exits non-zero.
+    blocking: true
+
+  - id: AC-2.12
+    kind: command
+    intent: the type check passes
+    run: npm run typecheck
+    expect: exit == 0
+    falsifier: >
+      If a type error is left, tsc exits non-zero.
+    blocking: true
+
+  - id: AC-2.13
+    kind: browser
+    intent: the zoom slider at its left end shows the whole photo at half of the "whole photo" size
+    given: a desktop Chromium viewport, port-1.jpg in cell 0 of spread 1 on template full, cell-1-0 selected
+    when: >
+      drag zoom-slider to its left end
+    then:
+      - the slider min attribute is about 0.168, not 1
+      - the slider max attribute is 8
+      - the whole photo shows, with background bands at the left and the right
+      - the img height is half of the cell height, within 2 %
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the slider min is still 1, or the photo at the left end is not half of the cell
+      height, this fails.
+    covers: [brief:R-2, brief:R-3]
+    blocking: true
+
+  - id: AC-2.14
+    kind: browser
+    intent: the zoom slider goes under 1 on a phone
+    given: an iPhone 13 viewport with touch emulation, port-1.jpg in cell 0 of spread 1 on template full, cell-1-0 selected
+    when: >
+      move zoom-slider to its left end
+    then:
+      - the zoom in the store goes under 1
+      - the photo shows whole, with background bands at the left and the right
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the slider on the phone stops at 1, this fails.
+    covers: [brief:R-3]
+    blocking: true
+
+  - id: AC-2.15
+    kind: browser
+    intent: one slider movement down and one undo give back the zoom before the movement
+    given: port-1.jpg in cell 0 of spread 1 on template full at zoom 1, cell-1-0 selected
+    when: >
+      drag zoom-slider from 1 to its left end in one movement, then press the undo button once
+    then:
+      - after the movement, the zoom is under 1
+      - after one undo, the zoom is 1 again
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If one undo gives back only part of the movement (the zoom is between the limit and 1),
+      or nothing, this fails.
+    covers: [brief:R-9]
+    blocking: true
+
+  - id: AC-2.16
+    kind: browser
+    intent: a photo dropped into an empty cell has zoom 1 and covers the cell
+    given: a desktop Chromium viewport, an album with port-1.jpg, spread 1 on template full with an empty cell
+    when: >
+      drag photo-port-1.jpg from the photo column onto cell-1-0
+    then:
+      - the zoom in the store is 1
+      - the img covers the cell, and no band of background shows
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If a new photo starts zoomed out or at the "whole photo" size, a band shows and this
+      fails.
+    covers: [brief:R-6]
+    blocking: true
+
+  - id: AC-2.17
+    kind: browser
+    intent: a drag of the border between two cells keeps a zoomed-out photo inside its cell
+    given: a desktop Chromium viewport, spread 1 on template row3 (template two has no gutter), land-1.jpg in cell 0, zoomed out to the lower limit with the zoom slider, dragged to the left edge in crop mode, then Escape to end crop mode (gutters do not show in crop mode)
+    when: >
+      drag gutter-0 far to the left, then far to the right
+    then:
+      - after each drag, the img box is inside the cell box
+      - after the drag to the right, the img width is half of the cell width, within 2 % (the zoom shows at the new limit)
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the photo overflows the narrower cell and is cut, or leaves a band on an axis where
+      it is larger than the cell, this fails.
+    covers: [brief:E-1]
+    blocking: true
+
+  - id: AC-2.18
+    kind: browser
+    intent: the slider can be set to exactly 1
+    given: port-1.jpg zoomed out in cell 0 of spread 1 on template full, cell-1-0 selected
+    when: >
+      set zoom-slider to the value 1
+    then:
+      - the zoom in the store is exactly 1
+      - the img covers the cell with no band
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the slider snaps to a step from its minimum (for example 0.968 or 1.068), this fails.
+    covers: [brief:R-3]
+    blocking: true
+
+  - id: AC-2.19
+    kind: command
+    intent: the test gate of project.md passes, the unit tests and every end-to-end spec
+    run: npm test && npm run e2e
+    expect: exit == 0
+    falsifier: >
+      If another consumer of the crop geometry breaks (the print summary in pages.ts, the
+      export, drag and drop, or the grey box of a photo with no screen copy), a test fails and
+      the command exits non-zero.
+    covers: [brief:R-6]
+    blocking: true

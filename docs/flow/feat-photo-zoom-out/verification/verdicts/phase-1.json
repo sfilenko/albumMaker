@@ -1,0 +1,262 @@
+{
+  "phase": 1,
+  "feature": "feat-photo-zoom-out",
+  "base": "1e74b0faf1dea7baf2efdbc681af656fc948a2e4",
+  "evidence_sha256": "5d4a3917aca488dd123320de7408d849dc0e671fc414c7b7f5103a20a45d5cef",
+  "status": "pass",
+  "diff_stat": "5 files changed, 240 insertions(+), 50 deletions(-)",
+  "prediction": [
+    "src/model/crop.ts: new export zoomLimits(photoW, photoH, cell) -> {min, max}; whole = min(pw, ph*a)/max(pw, ph*a) with a = cell.w/cell.h; min = whole/2; max = 8.",
+    "src/model/crop.ts: clampCrop clamps zoom to [zoomLimits.min, 8]; per axis, if visible span < photo span clamp centre as before; if larger, clamp centre so photo stays inside the cell (cx can be <0 or >1).",
+    "src/model/crop.ts: one private geometry helper; visiblePart (src inside photo, dst inside cell, mm) and photoBox (whole-photo rect, mm, can extend past cell) both derived from it and both call clampCrop first. sourceRect deleted (no export left, no caller in src).",
+    "src/model/crop.ts: effectiveDpi signature unchanged; divides src.sw by dst.w (in inches, mm/25.4), via visiblePart.",
+    "src/ui/SpreadView.tsx: CellPhoto calls photoBox and sets img left/top/width/height as percentages of cell w/h; no more sourceRect-based transform. PreviewMode untouched (uses CellPhoto).",
+    "src/export/render.ts: replaces sourceRect with visiblePart; drawImage(img, sx, sy, sw, sh, cellX + dst.x, cellY + dst.y, dst.w, dst.h) scaled to px; background fillRect(0,0,px.w,px.h) and the cell clip kept.",
+    "tests/unit/crop.test.ts: test 'zoomCrop keeps zoom between 1 and 8' changed to new limits; new tests: zoomLimits(1800,1200, 150x150) min ~0.333; effectiveDpi(1800,1200,...) ~305 at whole-photo zoom and ~610 at min; visiblePart dst narrower than cell at zoom 0.5 portrait in landscape cell; zoom 0.01 clamps to min; far-off centre stays inside cell; zoom>=1 src equals old sourceRect values; E-1 cell change; E-4 whole=1 min 0.5 pan both axes; E-7 monotonic visible width from 1.2 to 0.8; photoBox tested.",
+    "tests/e2e/crop.spec.ts: wheel test changed to assert zoom < 1 (toBeLessThan(1) or toBeCloseTo(0.3..)) and stops at the limit.",
+    "No other files change (pages.ts, PreviewMode.tsx, types.ts, store untouched). Zoom slider untouched (Phase 2).",
+    "Removed lines: sourceRect function and its use in SpreadView and render; old zoom >= 1 clamp; old effectiveDpi based on cell width; old wheel test assertion that zoom stays >= 1."
+  ],
+  "divergences": [
+    {
+      "expected": "panCrop changes only through clampCrop (signature kept, no own change predicted).",
+      "found": "panCrop (src/model/crop.ts:80-84) now calls clampCrop on the stored crop first and pans from the clamped centre and zoom, instead of from the raw crop.cx/cy and a zoom clamped to 1..8. For an in-range crop the result is the same; for a stored crop out of range (E-1, E-3) the pan starts from the shown position.",
+      "explained_by_plan": true,
+      "plan_quote": "The code calculates the limits each time it reads a crop. It does not store them. ... A border drag can change the cell (E-1), and a file can have a zoom under the limit (E-3). In both cases the photo shows correctly."
+    },
+    {
+      "expected": "The e2e wheel test asserts a zoom under 1.",
+      "found": "It also imports /src/model/crop.ts and /src/model/layout.ts in the page (tests/e2e/crop.spec.ts:78-86) to compute zoomLimits(...).min for the cell and asserts the wheel stops at that value within 1e-6.",
+      "explained_by_plan": true,
+      "plan_quote": "change the test \"wheel zoom never goes below 1\". The wheel now goes below 1 and stops at the limit of `zoomLimits` for that photo and cell."
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-1.1",
+      "result": "pass",
+      "command": "npx vitest run tests/unit/crop.test.ts",
+      "exit_code": 0,
+      "evidence": "Re-run in this session: 'Test Files  1 passed (1) / Tests  19 passed (19)', exit 0. Cases cover zoomLimits 1800x1200/150x150 min 1/3, effectiveDpi 304.8 and 609.6, visiblePart dst inside the cell at zoom 0.5, zoom 0.01 reads as min, centre cx -40 reads inside, zoom>=1 src equal to the old sourceRect formula, E-1 (tall/wide cell), E-4 (1500x1500 min 0.5, pan both axes), E-7 (1.2 to 0.8, strictly decreasing, no jump)."
+    },
+    {
+      "id": "AC-1.2",
+      "result": "pass",
+      "command": "git grep --untracked -n -E \"zoomLimits\\(1800, ?1200\" -- tests/unit/crop.test.ts",
+      "exit_code": 0,
+      "evidence": "Runner: result pass, matches include tests/unit/crop.test.ts:69, :97, :123 'const { min } = zoomLimits(1800, 1200, square150);'"
+    },
+    {
+      "id": "AC-1.3",
+      "result": "pass",
+      "command": "git grep --untracked -n -E \"effectiveDpi\\(1800, ?1200\" -- tests/unit/crop.test.ts",
+      "exit_code": 0,
+      "evidence": "matches 2: tests/unit/crop.test.ts:64 ...zoom: min * 2 })).toBeCloseTo(304.8, 1); :65 ...zoom: min })).toBeCloseTo(609.6, 1);"
+    },
+    {
+      "id": "AC-1.4",
+      "result": "pass",
+      "command": "git grep --untracked -n -E \"zoom: ?0\\.01\" -- tests/unit/crop.test.ts",
+      "exit_code": 0,
+      "evidence": "matches 2: tests/unit/crop.test.ts:95 test title, :96 'const crop = { cx: 0.5, cy: 0.5, zoom: 0.01 };'"
+    },
+    {
+      "id": "AC-1.5",
+      "result": "pass",
+      "command": "git grep --untracked -n \"sourceRect(\" -- src",
+      "exit_code": 1,
+      "evidence": "matches 0, expect matches == 0. Scoped grep of src/tests/scripts shows sourceRect only in a comment at tests/unit/crop.test.ts:33."
+    },
+    {
+      "id": "AC-1.6",
+      "result": "pass",
+      "command": "git grep --untracked -n \"photoBox(\" -- src/ui/SpreadView.tsx",
+      "exit_code": 0,
+      "evidence": "src/ui/SpreadView.tsx:48:  const b = photoBox(meta.width, meta.height, rect, cell.crop);"
+    },
+    {
+      "id": "AC-1.7",
+      "result": "pass",
+      "command": "git grep --untracked -n \"visiblePart(\" -- src/export/render.ts",
+      "exit_code": 0,
+      "evidence": "src/export/render.ts:56:      const { src, dst } = visiblePart(meta.width, meta.height, r, cell.crop);"
+    },
+    {
+      "id": "AC-1.8",
+      "result": "pass",
+      "command": "git grep --untracked -n \"fillRect(0, 0, px.w, px.h)\" -- src/export/render.ts",
+      "exit_code": 0,
+      "evidence": "matches 1: src/export/render.ts:43:  ctx.fillRect(0, 0, px.w, px.h);"
+    },
+    {
+      "id": "AC-1.9",
+      "result": "pass",
+      "command": "npx playwright test tests/e2e/crop.spec.ts",
+      "exit_code": 0,
+      "evidence": "'ok  4 [desktop-chromium] > tests\\e2e\\crop.spec.ts:63:1 > a double-click starts crop mode, wheel zoom goes below 1 and stops at the lower limit, and Escape ends crop mode (2.6s)' ... '1 skipped / 9 passed (7.6s)'. The skip is the mobile-webkit wheel test (test.skip: no mouse wheel in Playwright mobile WebKit), present before this phase."
+    },
+    {
+      "id": "AC-1.10",
+      "result": "pass",
+      "command": "git grep --untracked -n -E \"toBeLessThan\\(1\\)|toBeCloseTo\\(0\\.3\" -- tests/e2e/crop.spec.ts",
+      "exit_code": 0,
+      "evidence": "matches 2: tests/e2e/crop.spec.ts:75 'await expect.poll(async () => (await crop(page)).zoom).toBeLessThan(1);', :87 'expect(limit).toBeLessThan(1);'"
+    },
+    {
+      "id": "AC-1.11",
+      "result": "pass",
+      "command": "npm test && npm run e2e",
+      "exit_code": 0,
+      "evidence": "Tail: '7 skipped / 67 passed (31.4s)', exit 0."
+    },
+    {
+      "id": "AC-1.12",
+      "result": "pass",
+      "command": "npm run build",
+      "exit_code": 0,
+      "evidence": "Tail: '> tsc --noEmit && vite build' ... 'built in 143ms' ... 'dist/sw.js', exit 0."
+    },
+    {
+      "id": "AC-1.13",
+      "result": "pass",
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "evidence": "Tail: '> album-builder@0.1.0 typecheck / > tsc --noEmit', exit 0."
+    },
+    {
+      "id": "AC-1.14",
+      "result": "delegated_to_probe",
+      "evidence": "browser kind; /df:probe phase-1 owes the proof (wheel zoom-out of port-1.jpg on full, bands left/right, img height half of cell, zoom about 0.168). Runtime proof still outstanding."
+    },
+    {
+      "id": "AC-1.15",
+      "result": "delegated_to_probe",
+      "evidence": "browser kind; /df:probe phase-1 owes the proof (drag of a zoomed-out photo stops at the cell edges). Runtime proof still outstanding."
+    },
+    {
+      "id": "AC-1.16",
+      "result": "delegated_to_probe",
+      "evidence": "browser kind; /df:probe phase-1 owes the proof (no band on the covered axis at zoom about 0.6). Runtime proof still outstanding."
+    },
+    {
+      "id": "AC-1.17",
+      "result": "delegated_to_probe",
+      "evidence": "browser kind; /df:probe phase-1 owes the proof (preview places the zoomed-out photo as the editor does). Runtime proof still outstanding."
+    },
+    {
+      "id": "AC-1.18",
+      "result": "delegated_to_probe",
+      "evidence": "browser kind; /df:probe phase-1 owes the proof (export bands are #1d1d1d, photo position matches the editor). Runtime proof still outstanding."
+    },
+    {
+      "id": "AC-1.19",
+      "result": "delegated_to_probe",
+      "evidence": "browser kind; /df:probe phase-1 owes the proof (low-dpi-1-0 shows 74-75 at zoom 1, 198-199 at the lower limit). Runtime proof still outstanding."
+    },
+    {
+      "id": "AC-1.20",
+      "result": "delegated_to_probe",
+      "evidence": "browser kind; /df:probe phase-1 owes the proof (CDP two-finger pinch zooms under 1). Runtime proof still outstanding."
+    },
+    {
+      "id": "AC-1.21",
+      "result": "pass",
+      "command": "git grep --untracked -n \"visiblePart(\" -- tests/unit/crop.test.ts",
+      "exit_code": 0,
+      "evidence": "matches 4: tests/unit/crop.test.ts:17, :26, :35, :78"
+    },
+    {
+      "id": "AC-1.22",
+      "result": "pass",
+      "command": "git grep --untracked -n \"photoBox(\" -- tests/unit/crop.test.ts",
+      "exit_code": 0,
+      "evidence": "matches 12, among them tests/unit/crop.test.ts:70, :103, :125, :137, :161, :172"
+    },
+    {
+      "id": "AC-1.23",
+      "result": "delegated_to_probe",
+      "evidence": "browser kind; /df:probe phase-1 owes the proof (one wheel series under 1 is one undo step). Runtime proof still outstanding."
+    }
+  ],
+  "gates": [
+    {
+      "name": "build_command",
+      "command": "npm run build",
+      "exit_code": 0,
+      "tail": "> tsc --noEmit && vite build ... built in 143ms ... PWA v2.0.0 ... dist/sw.js, dist/workbox-9c191d2f.js"
+    },
+    {
+      "name": "type_check_command",
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "tail": "> album-builder@0.1.0 typecheck / > tsc --noEmit"
+    },
+    {
+      "name": "test_command",
+      "command": "npm test && npm run e2e",
+      "exit_code": 0,
+      "tail": "7 skipped / 67 passed (31.4s)"
+    }
+  ],
+  "consumers": [
+    {
+      "symbol": "sourceRect (deleted)",
+      "call_sites": [
+        "src/ui/SpreadView.tsx:48 (now photoBox)",
+        "src/export/render.ts:56 (now visiblePart)",
+        "src/model/crop.ts:93 effectiveDpi (now visiblePart)",
+        "tests/unit/crop.test.ts (now visiblePart; only a comment at :33 names it)"
+      ],
+      "all_updated": true
+    },
+    {
+      "symbol": "clampCrop / zoomCrop / panCrop (lower zoom limit now per photo and cell)",
+      "call_sites": [
+        "src/ui/SpreadView.tsx:136 pinch zoomCrop",
+        "src/ui/SpreadView.tsx:141 drag panCrop",
+        "src/ui/SpreadView.tsx:159 wheel zoomCrop",
+        "src/ui/CellToolbar.tsx:38 slider zoomCrop (own MIN_ZOOM = 1 at :10, :54; Phase 2 scope)",
+        "src/model/crop.ts:42, :80, :84, :88 internal"
+      ],
+      "all_updated": true
+    },
+    {
+      "symbol": "effectiveDpi (now divides by dst.w)",
+      "call_sites": [
+        "src/ui/SpreadView.tsx:162 low-dpi icon",
+        "src/model/pages.ts:73 print summary low-dpi"
+      ],
+      "all_updated": true
+    },
+    {
+      "symbol": "CellPhoto (now places img from photoBox)",
+      "call_sites": [
+        "src/ui/SpreadView.tsx:184 editor cell",
+        "src/ui/PreviewMode.tsx:116 preview cell"
+      ],
+      "all_updated": true
+    },
+    {
+      "symbol": "zoomLimits / visiblePart / photoBox (new)",
+      "call_sites": [
+        "src/export/render.ts:56",
+        "src/ui/SpreadView.tsx:48",
+        "tests/e2e/crop.spec.ts:83",
+        "tests/unit/crop.test.ts"
+      ],
+      "all_updated": true
+    }
+  ],
+  "removed_behavior": [
+    "export sourceRect deleted: no caller is left in src, tests or scripts (AC-1.5 0 matches; build and typecheck exit 0).",
+    "MIN_ZOOM = 1 in src/model/crop.ts deleted: clampCrop now takes the lower limit from zoomLimits. The wheel and the pinch go under 1 as the plan requires. The slider in src/ui/CellToolbar.tsx keeps its own MIN_ZOOM = 1 (Phase 2), and its test 'the zoom slider goes from 1 to 8 and never below 1' still passes.",
+    "old clampCrop centre clamp clamp(c, h, 1-h) is kept for half <= 0.5 and replaced by clamp(c, 1-half, half) for half > 0.5. For zoom >= 1 the result is the same as before.",
+    "old panCrop panned from the raw stored cx/cy; it now pans from the clamped crop (explained by the Decision Log, see divergences).",
+    "old effectiveDpi divided by cell.w; it now divides by dst.w. For zoom >= 1, dst.w equals cell.w, so pages.ts low-dpi and the icon are unchanged there ('effective dpi on the full spread' 251.5 and 'zoom 2 halves the dpi' 125.7 still pass).",
+    "old CellPhoto style (meta.width/sw, -sx/sw): photoBox gives photoW/sw and -vx/sw, which is the same for zoom >= 1 because vx == sx after the clamp.",
+    "old render drawImage target was the whole cell (dx, dy, dw, dh); it is now dx + dst.x*kx etc. For zoom >= 1, dst is the whole cell. The clip and the background fill are kept.",
+    "old e2e assertion that the wheel zoom ends at exactly 1 is replaced by assertions that it goes under 1 and ends at zoomLimits(...).min.",
+    "old unit test 'zoomCrop keeps zoom between 1 and 8' is replaced by 'zoomCrop keeps the zoom between the lower limit and 8'. The exact toBe(0)/toBe(6000) checks of the first test became toBeCloseTo(.., 9), which is the same check within floating point."
+  ],
+  "blockers": []
+}

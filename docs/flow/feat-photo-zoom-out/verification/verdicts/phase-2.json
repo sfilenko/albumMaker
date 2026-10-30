@@ -1,0 +1,211 @@
+{
+  "phase": 2,
+  "feature": "feat-photo-zoom-out",
+  "base": "41ce9b51f3510ea7935ad7b444fb78dbe490eabb",
+  "evidence_sha256": "5b4fe41db870c545e417ac28ef9dd975f1428f46412ae4faf26fe19a83ea70aa",
+  "status": "pass",
+  "diff_stat": "src/ui/CellToolbar.tsx | 13 ++++++-------; tests/e2e/crop.spec.ts | 15 ++++++++++++---; 2 files changed, 18 insertions(+), 10 deletions(-); plus 1 new file tests/e2e/zoom-out.spec.ts (281 lines). Bundle read whole: 377 of 377 lines.",
+  "prediction": [
+    "src/ui/CellToolbar.tsx: delete const MIN_ZOOM / MAX_ZOOM; import zoomLimits from ../model/crop; compute {min,max} from the selected photo's width/height and the cell Rect; slider min={min} max={max} step=\"any\"; one undo entry per slider gesture kept (existing coalescing unchanged); no-photo fallback kept.",
+    "tests/e2e/crop.spec.ts: rewrite 'the zoom slider goes from 1 to 8 and never below 1': min is the computed lower limit (not '1'), max '8', value 0 gives the limit; no toHaveAttribute('min', '1') left.",
+    "tests/e2e/zoom-out.spec.ts (new): port-1.jpg; (a) editor bands left/right and img inside cell, (b) preview via preview-cell- same relative position, (c) export via download + unzipSync, pixel in band = background and centre = photo, (d) crop-mode drag on free axis stops at edge (may skip mobile-webkit), (e) slider down then undo gives zoom 1, (f) dropped photo zoom 1 no band, (g) gutter-0 drag on row3 keeps img inside cell.",
+    "No changes outside these three files; zoomLimits comes from Phase 1.",
+    "CellToolbar props probably unchanged; if changed, Editor call site must change.",
+    "Gates build, typecheck, test (npm test && npm run e2e) exit 0; lint is none."
+  ],
+  "divergences": [
+    {
+      "expected": "Only tests that need a mouse wheel or a mouse drag skip mobile-webkit, and the skip reason names that.",
+      "found": "zoom-out.spec.ts 'the export of a zoomed-out photo ...' skips every non-chromium browser with the reason 'The print export at full size is a desktop flow'. The reason text is copied from the existing file-level skip at tests/e2e/export.spec.ts:10. The test also does a mouse drag (dragPhoto, page.mouse down/move/up) to move the photo off centre. So the export half of R-7 and E-5 is proven on desktop-chromium only, which matches the export coverage the project already had.",
+      "explained_by_plan": true,
+      "plan_quote": "A test that needs a mouse wheel or a mouse drag can skip `mobile-webkit` with a reason, as `tests/e2e/crop.spec.ts` does now."
+    },
+    {
+      "expected": "Drop test runs on both projects or skips with a mouse-drag reason.",
+      "found": "zoom-out.spec.ts 'a photo dropped into an empty cell ...' skips when the viewport is under 900 px wide, with the reason that on a phone the photo column and the spread are on different tabs, and dnd.spec.ts covers the tap to place. The test does a mouse drag from photo-port-1.jpg to cell-1-0.",
+      "explained_by_plan": true,
+      "plan_quote": "A test that needs a mouse wheel or a mouse drag can skip `mobile-webkit` with a reason"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-2.1",
+      "result": "pass",
+      "command": "npx playwright test tests/e2e/zoom-out.spec.ts tests/e2e/crop.spec.ts",
+      "exit_code": 0,
+      "evidence": "Runner tail: '3 skipped', '23 passed (34.4s)'. Skips on mobile-webkit: crop.spec.ts:63 (wheel, pre-existing), zoom-out.spec.ts:134 (drop), zoom-out.spec.ts:192 (export). All 7 zoom-out tests pass on desktop-chromium, e.g. 'ok 13 [desktop-chromium] > zoom-out.spec.ts:246:1 > on row3, a border drag keeps a zoomed-out photo inside its cell ...'; 'ok 20 [mobile-webkit] > crop.spec.ts:94:1 > the zoom slider goes from the lower limit of the photo and the cell to 8'."
+    },
+    {
+      "id": "AC-2.2",
+      "result": "pass",
+      "command": "git grep --untracked -n -E \"const (MIN|MAX)_ZOOM\" -- src/ui",
+      "exit_code": 1,
+      "evidence": "matches 0, empty tail. Bundle shows '-const MIN_ZOOM = 1;' and '-const MAX_ZOOM = 8;' removed from CellToolbar.tsx."
+    },
+    {
+      "id": "AC-2.3",
+      "result": "pass",
+      "command": "git grep --untracked -n \"zoomLimits(\" -- src/ui/CellToolbar.tsx",
+      "exit_code": 0,
+      "evidence": "matches 1: 'src/ui/CellToolbar.tsx:29:  const limits = zoomLimits(meta.width, meta.height, rect);'"
+    },
+    {
+      "id": "AC-2.4",
+      "result": "pass",
+      "command": "git grep --untracked -n \"step=\\\"any\\\"\" -- src/ui/CellToolbar.tsx",
+      "exit_code": 0,
+      "evidence": "matches 1: 'src/ui/CellToolbar.tsx:55:          step=\"any\"'"
+    },
+    {
+      "id": "AC-2.5",
+      "result": "pass",
+      "command": "git grep --untracked -n \"port-1.jpg\" -- tests/e2e/zoom-out.spec.ts",
+      "exit_code": 0,
+      "evidence": "matches 10, e.g. 'tests/e2e/zoom-out.spec.ts:89:  await albumWith(page, 'port-1.jpg', 'full');'"
+    },
+    {
+      "id": "AC-2.6",
+      "result": "pass",
+      "command": "git grep --untracked -n -i -E \"Control(OrMeta)?\\+z|getByTestId\\(.undo.\\)\" -- tests/e2e/zoom-out.spec.ts",
+      "exit_code": 0,
+      "evidence": "matches 1: 'tests/e2e/zoom-out.spec.ts:130:  await page.getByTestId('undo').click();'"
+    },
+    {
+      "id": "AC-2.7",
+      "result": "pass",
+      "command": "git grep --untracked -n \"toHaveAttribute('min', '1')\" -- tests/e2e/crop.spec.ts",
+      "exit_code": 1,
+      "evidence": "matches 0. Bundle: \"-  await expect(slider).toHaveAttribute('min', '1');\" replaced by a toBeCloseTo(limit, 6) check of the min attribute."
+    },
+    {
+      "id": "AC-2.8",
+      "result": "pass",
+      "command": "git grep --untracked -n \"preview-cell-\" -- tests/e2e/zoom-out.spec.ts",
+      "exit_code": 0,
+      "evidence": "matches 2: zoom-out.spec.ts:187 and :188 (relBox(page, 'preview-cell-0'))."
+    },
+    {
+      "id": "AC-2.9",
+      "result": "pass",
+      "command": "git grep --untracked -n -E \"unzipSync|spread-01\\.jpg\" -- tests/e2e/zoom-out.spec.ts",
+      "exit_code": 0,
+      "evidence": "matches 3: zoom-out.spec.ts:2 import, :216 unzipSync(...), :237 files['spreads/spread-01.jpg']."
+    },
+    {
+      "id": "AC-2.10",
+      "result": "pass",
+      "command": "git grep --untracked -n \"gutter-\" -- tests/e2e/zoom-out.spec.ts",
+      "exit_code": 0,
+      "evidence": "matches 1: 'tests/e2e/zoom-out.spec.ts:256:    const g = (await page.getByTestId('gutter-0').boundingBox())!;'"
+    },
+    {
+      "id": "AC-2.11",
+      "result": "pass",
+      "command": "npm run build",
+      "exit_code": 0,
+      "evidence": "Tail: '> tsc --noEmit && vite build', '47 modules transformed.', 'built in 681ms', 'PWA v2.0.0 ... files generated dist/sw.js'."
+    },
+    {
+      "id": "AC-2.12",
+      "result": "pass",
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "evidence": "Tail: '> album-builder@0.1.0 typecheck', '> tsc --noEmit', exit 0 (tsconfig include covers src and tests)."
+    },
+    {
+      "id": "AC-2.13",
+      "result": "delegated_to_probe",
+      "evidence": "kind browser: /df:probe phase-2 owes the runtime proof (slider min about 0.168, max 8, img height half of cell on desktop Chromium). Static counterpart: zoom-out.spec.ts:86 passes on both projects."
+    },
+    {
+      "id": "AC-2.14",
+      "result": "delegated_to_probe",
+      "evidence": "kind browser: /df:probe phase-2 owes the iPhone 13 touch proof that the slider goes under 1."
+    },
+    {
+      "id": "AC-2.15",
+      "result": "delegated_to_probe",
+      "evidence": "kind browser: /df:probe phase-2 owes the proof that one slider movement plus one undo restores zoom 1. Static counterpart: zoom-out.spec.ts:126 passes on both projects."
+    },
+    {
+      "id": "AC-2.16",
+      "result": "delegated_to_probe",
+      "evidence": "kind browser: /df:probe phase-2 owes the drag-and-drop proof (zoom 1, no band). Static counterpart: zoom-out.spec.ts:134 passes on desktop-chromium."
+    },
+    {
+      "id": "AC-2.17",
+      "result": "delegated_to_probe",
+      "evidence": "kind browser: /df:probe phase-2 owes the gutter-drag proof on row3. Static counterpart: zoom-out.spec.ts:246 passes on both projects."
+    },
+    {
+      "id": "AC-2.18",
+      "result": "delegated_to_probe",
+      "evidence": "kind browser: /df:probe phase-2 owes the proof that the slider sets exactly 1. Static counterpart: zoom-out.spec.ts:114 passes on both projects."
+    },
+    {
+      "id": "AC-2.19",
+      "result": "pass",
+      "command": "npm test && npm run e2e",
+      "exit_code": 0,
+      "evidence": "Tail: '9 skipped', '81 passed (1.5m)', including 'ok 80 [mobile-webkit] > spread.spec.ts:38:1 > on row3, a border drag changes cell 0 and cell 1 only ...' and the relink grey-box test."
+    }
+  ],
+  "gates": [
+    {
+      "name": "build_command",
+      "command": "npm run build",
+      "exit_code": 0,
+      "tail": "built in 681ms; PWA v2.0.0 mode generateSW precache 8 entries; files generated dist/sw.js. (Same verbatim command, run by acceptance.mjs as AC-2.11 on this tree.)"
+    },
+    {
+      "name": "type_check_command",
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "tail": "> tsc --noEmit (no errors). (Same verbatim command, run by acceptance.mjs as AC-2.12.)"
+    },
+    {
+      "name": "test_command",
+      "command": "npm test && npm run e2e",
+      "exit_code": 0,
+      "tail": "9 skipped, 81 passed (1.5m). (Same verbatim command, run by acceptance.mjs as AC-2.19.)"
+    }
+  ],
+  "consumers": [
+    {
+      "symbol": "CellToolbar (src/ui/CellToolbar.tsx:10), props unchanged, slider min/max/step behaviour changed",
+      "call_sites": [
+        "src/ui/Editor.tsx:151"
+      ],
+      "all_updated": true
+    },
+    {
+      "symbol": "zoomLimits (src/model/crop.ts:19, Phase 1 symbol, new call site in this phase)",
+      "call_sites": [
+        "src/model/crop.ts:34",
+        "src/ui/CellToolbar.tsx:29",
+        "tests/e2e/crop.spec.ts:83",
+        "tests/unit/crop.test.ts:56"
+      ],
+      "all_updated": true
+    },
+    {
+      "symbol": "data-testid zoom-slider (DOM contract read by e2e tests)",
+      "call_sites": [
+        "tests/e2e/crop.spec.ts:97",
+        "tests/e2e/zoom-out.spec.ts (setSlider, slider attribute checks)"
+      ],
+      "all_updated": true
+    }
+  ],
+  "removed_behavior": [
+    "CellToolbar.tsx '-const MIN_ZOOM = 1;': the slider floor of 1 is removed on purpose (R-3). AC-2.2 shows no copy is left in src/ui. Nothing else reads it.",
+    "CellToolbar.tsx '-const MAX_ZOOM = 8;': the ceiling now comes from zoomLimits().max, which is MAX_ZOOM = 8 in src/model/crop.ts:23. Behaviour is the same, and the tests assert max '8'.",
+    "CellToolbar.tsx '-step={0.1}': replaced by step=\"any\" (Decision Log). Side effect that no test covers: with step=\"any\", the arrow-key step of the slider is browser-defined, no longer 0.1. The plan accepts this when it chooses step=\"any\". Not a blocker.",
+    "crop.spec.ts: the old title and assertions min == '1' and set('0') -> zoom 1 are removed. They asserted the behaviour this feature removes. They are replaced by min ~= computed limit and set('0') -> zoom ~= limit."
+  ],
+  "blockers": [],
+  "fail_first": {
+    "present": false,
+    "skipped_reason": "No fail-first evidence was given to the verifier. The new tests were judged by reading them and by their pass on the current tree."
+  }
+}

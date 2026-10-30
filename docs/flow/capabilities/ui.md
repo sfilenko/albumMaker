@@ -2,7 +2,7 @@
 description: What the project does in the ui code area. One row per delivered requirement, with its verdict.
 area: ui
 paths: ["src/ui/**"]
-last_verified: 7cb4e2f91fc146fed9a53f64a630ab2f5effba43
+last_verified: 1e74b0faf1dea7baf2efdbc681af656fc948a2e4
 ---
 
 | Id | Capability | Delivered by | Req | Evidence |
@@ -20,7 +20,6 @@ last_verified: 7cb4e2f91fc146fed9a53f64a630ab2f5effba43
 | C-15 | A template change keeps the photos in cell order | `feat-album-builder` | R-15 | phase-1 `pass`, phase-5 `pass` |
 | C-18 | Drag the border between two cells | `feat-album-builder` | R-18 | phase-1 `pass`, phase-4 `pass` |
 | C-19 | The fold gap between two pages is not a border | `feat-album-builder` | R-19 | phase-1 `pass`, phase-4 `pass` |
-| C-21 | Pan and zoom (1× to 8×) inside a cell | `feat-album-builder` | R-21 | phase-1 `pass`, phase-5 `pass` |
 | C-22 | Warning icon under 200 dpi | `feat-album-builder` | R-22 | phase-1 `pass`, phase-5 `pass` |
 | C-23 | Guides for bleed, safe zone and fold | `feat-album-builder` | R-23 | phase-4 `pass`, phase-6 `pass` |
 | C-27 | A layout opens on another device, and relink matches by name, size, pixel size and date | `feat-album-builder` | R-27 | phase-3 `pass`, phase-8 `pass` |
@@ -32,3 +31,6 @@ last_verified: 7cb4e2f91fc146fed9a53f64a630ab2f5effba43
 | C-42 | Installable PWA that opens offline | `feat-album-builder` | R-42 | phase-8 `pass` |
 | C-43 | GitHub Pages at one fixed address | `feat-album-builder` | R-43 | phase-8 `pass` · AC-8.25 `manual`, opened by hand on 2026-10-29 |
 | C-44 | Photos never leave the device | `feat-album-builder` | R-44 | phase-3 `pass`, phase-8 `pass` |
+| C-47 | The zoom slider, the mouse wheel and the pinch go down to the lower zoom limit | `feat-photo-zoom-out` | R-3 | phase-1 `pass`, phase-2 `pass` · probe `all.json` `pass` |
+| C-50 | A new photo in a cell starts at zoom 1 and covers the cell | `feat-photo-zoom-out` | R-6 | phase-2 `pass` · probe `all.json` `pass` |
+| C-53 | One zoom gesture (slider movement, wheel series, pinch) is one undo step | `feat-photo-zoom-out` | R-9 | phase-2 `pass` · probe `all.json` `pass` |

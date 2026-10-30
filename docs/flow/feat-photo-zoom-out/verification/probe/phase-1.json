@@ -1,0 +1,165 @@
+{
+  "phase": 1,
+  "feature": "feat-photo-zoom-out",
+  "base": "1e74b0faf1dea7baf2efdbc681af656fc948a2e4",
+  "evidence_sha256": "7a7b26536beeab05d304dfe8aad232721fada566ba4f14ee28fa8be2c9e1aebb",
+  "probe_kind": "browser",
+  "server": {
+    "started": true,
+    "ready_ms": 314,
+    "port": 5173,
+    "port_source": "declared",
+    "base_url": "http://localhost:5173",
+    "note": "Started with 'npm run dev -- --port 5173 --strictPort' from D:/personal/Photo/composition; Vite announced http://localhost:5173/. Stopped with TaskStop and doctor.mjs stop (free_after: true). Browser: Playwright MCP Chromium 156, viewport 1280x800; the wheel deltaY reaches the page scaled by 1.25 (Windows display scale), so one wheel(0,120) gives a zoom factor of exp(-0.3)."
+  },
+  "preconditions": [
+    {
+      "what": "The running dev build serves /src/model/crop.ts with the phase's new exports photoBox and visiblePart, without sourceRect, and zoomLimits(1800,1200,150x150 cell).min = 0.3333",
+      "held": true,
+      "evidence": "exports: LOW_DPI, clampCrop, effectiveDpi, panCrop, photoBox, visiblePart, zoomCrop, zoomLimits; typeof sourceRect = undefined; min = 0.3333333333333333"
+    }
+  ],
+  "checks": [
+    {
+      "id": "AC-1.14",
+      "result": "pass",
+      "assertions": [
+        { "then": "while the zoom goes under 1, the cell shows the album background colour at the left and the right of the photo", "actual": "6 samples at zoom 0.7408, 0.5488, 0.4066, 0.3012, 0.2231, 0.1683: left and right band pixels rgb(244,239,230) = background #f4efe6 in each; photo centre rgb(202,92,64)", "ok": true },
+        { "then": "the img box stays inside the cell box horizontally", "actual": "insideX true for every sample under zoom 1 (cell x 256..1004)", "ok": true },
+        { "then": "at the end, the img height is half of the cell height, within 2 %", "actual": "img h 188.85 / cell h 377.70 = 0.5000", "ok": true },
+        { "then": "the zoom in the store is about 0.168", "actual": "zoom stopped at 0.16831683 (= zoomLimits min), unchanged on 2 more wheel turns", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.14.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.14.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.14.net.log"
+      ]
+    },
+    {
+      "id": "AC-1.15",
+      "result": "pass",
+      "assertions": [
+        { "then": "the photo moves with the drag", "actual": "img x 567.04 -> 542.04, 517.04, 492.04 ... (25 px per 25 px mouse step)", "ok": true },
+        { "then": "after the drag to the left, the left edge of the img is at the left edge of the cell", "actual": "left gap 0 px; crop cx 2.9706", "ok": true },
+        { "then": "after the drag to the right, the right edge of the img is at the right edge of the cell", "actual": "right gap 0.012 px; crop cx -1.9706", "ok": true },
+        { "then": "at no time does the cell edge cut the img", "actual": "img inside the cell box on all 50 sampled drag steps", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.15.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.15.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.15.net.log"
+      ]
+    },
+    {
+      "id": "AC-1.16",
+      "result": "pass",
+      "assertions": [
+        { "then": "the img always covers the cell from its top edge to its bottom edge", "actual": "zoom after one mouse.wheel(0,255) = 0.5286 (between the whole-photo zoom 0.3366 and 1); covers=true on all 50 drag steps; after drag up: bottom gap 0, top overflow 215.39 px; after drag down: top gap 0, bottom overflow 215.39 px", "ok": true },
+        { "then": "no band of background shows at the top or the bottom", "actual": "pixel 2 px inside the bottom edge after drag up rgb(202,85,61); 2 px inside the top edge after drag down rgb(202,83,60); background is rgb(244,239,230)", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.16.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.16.up.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.16.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.16.net.log"
+      ]
+    },
+    {
+      "id": "AC-1.17",
+      "result": "pass",
+      "assertions": [
+        { "then": "the img box relative to preview-cell-0 has the same left, top, width and height fractions as in the editor, within 1 %", "actual": "crop cx 0.9932, zoom 0.4066 (off centre); editor l 0.096173 t -0.103852 w 0.406568 h 1.207738; preview (data-spread-index 1) l 0.096174 t -0.103873 w 0.406563 h 1.207746; max diff 0.00002", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.17.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.17.editor.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.17.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.17.net.log"
+      ]
+    },
+    {
+      "id": "AC-1.18",
+      "result": "pass",
+      "assertions": [
+        { "then": "a pixel in the wider of the two bands beside the photo is close to #1d1d1d", "actual": "spreads/spread-01.jpg 7157x3614, row 1807: wider band is the right one (3558 px); pixel x=5378 rgb(29,29,29)", "ok": true },
+        { "then": "a pixel at the centre of the photo is not the background colour", "actual": "x=2143 rgb(202,119,77)", "ok": true },
+        { "then": "the photo's left and right edges are at the same fractions of the cell as in the editor, within 1 %", "actual": "export left 0.095990 right 0.502864; editor left 0.096173 right 0.502741; diff 0.00018 and 0.00012", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.18.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.18.decode.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.18.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.18.net.log"
+      ]
+    },
+    {
+      "id": "AC-1.19",
+      "result": "pass",
+      "assertions": [
+        { "then": "at zoom 1, low-dpi-1-0 shows 74 or 75 dpi", "actual": "'⚠ 75 dpi' at zoom 1", "ok": true },
+        { "then": "at the lower limit, low-dpi-1-0 shows 198 or 199 dpi", "actual": "'⚠ 199 dpi' at zoom 0.378713 (= zoomLimits min, 6 wheel turns)", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.19.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.19.zoom1.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.19.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.19.net.log"
+      ]
+    },
+    {
+      "id": "AC-1.20",
+      "result": "pass",
+      "assertions": [
+        { "then": "the zoom in the store goes under 1", "actual": "two CDP touch points pinched from 400 px to 80 px apart: zoom 0.9744 -> ... -> 0.2564 during the moves, 0.2051 at the end; pointer events seen: pointerdown touch x2, pointermove touch x32, pointerup touch x2, no pointercancel", "ok": true },
+        { "then": "the photo gets smaller and shows background bands at the left and the right", "actual": "img w 748 -> 153.4 px; bands 297.3 px each side, pixels rgb(244,239,230) = background", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.20.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.20.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.20.net.log"
+      ]
+    },
+    {
+      "id": "AC-1.23",
+      "result": "pass",
+      "assertions": [
+        { "then": "after the wheel series, the zoom in the store is under 1", "actual": "4 wheel turns 159, 140, 138 ms apart; zoom 0.367879", "ok": true },
+        { "then": "after one Control+z, the zoom in the store is 1 again", "actual": "after 1 s and one Control+z: crop {cx 0.5, cy 0.5, zoom 1}; the photo is still placed", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.23.png",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.23.console.log",
+        ".devflow/evidence/feat-photo-zoom-out/AC-1.23.net.log"
+      ]
+    }
+  ],
+  "regression_sweep": [
+    { "surface": "spread strip: open spread 1, the cover, then spread 1 again (strip-1, strip-0)", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "template panel: switch spread 1 to template two, then back to full", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "album list: back to albums (36 items), open the first album", "tripwire_clean": true, "console_errors": [] }
+  ],
+  "lessons_fired": [],
+  "deviations": [
+    {
+      "kind": "other",
+      "check": "AC-1.16",
+      "what": "The given says one mouse.wheel(0, 255) sets a zoom of about 0.6. In this browser it set 0.5286, because the wheel deltaY reaches the page scaled by 1.25 (Windows display scale): exp(-255 x 1.25 x 0.002) = 0.5286.",
+      "why": "0.5286 is still between the whole-photo zoom (0.3366) and 1, so the covered-axis falsifier stays discriminating. The contract's 'about 0.6' assumes a device scale of 1."
+    },
+    {
+      "kind": "other",
+      "check": "AC-1.20",
+      "what": "The given says desktop Chromium with hasTouch. The probe drives the existing Playwright MCP context, so touch was enabled with CDP Emulation.setTouchEmulationEnabled (maxTouchPoints 5), which is the call Playwright's hasTouch option makes. The pinch itself was driven with CDP Input.dispatchTouchEvent and two touch points, as the contract says.",
+      "why": "A new context with hasTouch would leave the console and network capture of the MCP tools."
+    }
+  ],
+  "outcome": "pass_with_deviation"
+}
