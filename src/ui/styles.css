@@ -44,9 +44,10 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .top-bar { grid-area: top; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 .top-bar .album-title { font-size: 16px; margin: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .top-bar .history, .top-bar .spread-nav, .top-bar .actions { display: flex; align-items: center; gap: 6px; }
-.editor.mobile .top-bar { flex-wrap: wrap; }
-.editor.mobile .top-bar .actions { order: 10; width: 100%; overflow-x: auto; }
-.editor.mobile .top-bar .actions button { flex: none; padding: 4px 8px; font-size: 13px; }
+.editor.mobile .top-bar { flex-wrap: wrap; gap: 6px; }
+/* The buttons share the rows of the bar, so each one is on the screen without a scroll. */
+.editor.mobile .top-bar .actions { display: contents; }
+.editor.mobile .top-bar .actions button { flex: none; padding: 4px 6px; font-size: 13px; }
 .panel { background: var(--panel); overflow: auto; }
 
 .editor.desktop {
