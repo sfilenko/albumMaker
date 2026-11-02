@@ -7,11 +7,10 @@ import { importFiles, pickFiles, pickFolder } from '../photos/import';
 import { registerOriginals } from '../photos/originals';
 import type { AlbumStore } from '../state/store';
 import { putDirHandle } from '../storage/db';
+import { folderPicker } from '../storage/layoutFile';
 import { armedPhoto, registerDropTarget, startDrag } from './dnd';
 import { usePreviewUrl } from './previews';
 import { strings } from './strings';
-
-const hasFolderPicker = () => 'showDirectoryPicker' in window;
 
 function Thumb({ meta, uses, missing }: { meta: PhotoMeta; uses: number; missing: boolean }) {
   const url = usePreviewUrl(meta.id, 'thumb');
@@ -97,7 +96,7 @@ export function PhotoPanel({
   return (
     <aside class="panel photo-panel" data-testid="photo-panel" aria-label={strings.tabPhotos} ref={panel}>
       <div class="panel-head">
-        {hasFolderPicker() && (
+        {folderPicker() && (
           <button type="button" data-testid="add-folder" disabled={progress !== null} onClick={addFolder}>
             {strings.addFolder}
           </button>

@@ -17,14 +17,14 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-/** A new album with one non-cover spread on `templateId`, and `photo` in cell 0. */
-async function albumWithPhoto(page: Page, photo: string, templateId: string) {
+/** A new album with one non-cover spread on `templateId`, and each photo in its own cell, from cell 0. */
+async function albumWithPhotos(page: Page, photos: string[], templateId: string) {
   await page.goto('/');
   await page.getByTestId('create-album').click();
   const chooser = page.waitForEvent('filechooser');
   await page.getByTestId('add-photos').click();
-  await (await chooser).setFiles(join(FIXTURES, photo));
-  await expect(page.getByTestId('photo-counter')).toHaveText('використано 0 / 1');
+  await (await chooser).setFiles(photos.map((photo) => join(FIXTURES, photo)));
+  await expect(page.getByTestId('photo-counter')).toHaveText(`використано 0 / ${photos.length}`);
   await page.evaluate(
     async ([path, t]) => {
       const m = await import(path);
@@ -32,13 +32,18 @@ async function albumWithPhoto(page: Page, photo: string, templateId: string) {
         let next = a;
         for (const s of a.spreads.slice(2)) next = m.removeSpread(next, s.id);
         next = m.applyTemplate(next, a.spreads[1].id, t);
-        return m.placePhoto(next, { spreadId: a.spreads[1].id, cellIndex: 0 }, a.photos[0].id);
+        for (const [cellIndex, photo] of a.photos.entries()) {
+          next = m.placePhoto(next, { spreadId: a.spreads[1].id, cellIndex }, photo.id);
+        }
+        return next;
       });
     },
     [ALBUM, templateId] as const,
   );
   await expect(page.getByTestId('cell-1-0').locator('img')).toBeVisible();
 }
+
+const albumWithPhoto = (page: Page, photo: string, templateId: string) => albumWithPhotos(page, [photo], templateId);
 
 async function startExport(page: Page) {
   await page.getByTestId('action-export').click();
@@ -129,6 +134,33 @@ test('after a reload the export asks for the originals, and after the fixture is
     await page.getByTestId('export-choose-originals').click();
     await (await chooser).setFiles(join(FIXTURES, 'land-1.jpg'));
     // The export goes on only on a new click, so a folder picker would get its user activation.
+    await page.getByTestId('export-continue').click();
+  });
+  expect(jpegSize(files['spreads/spread-01.jpg'])).toEqual({ w: 7157, h: 3614 });
+  await expect(page.getByTestId('export-done')).toBeVisible();
+});
+
+test('a partial round asks only for the photo that is still missing, and the export then completes', async ({ page }) => {
+  await albumWithPhotos(page, ['land-1.jpg', 'port-1.jpg'], 'two');
+  await page.reload();
+  await expect(page.getByTestId('photo-counter')).toHaveText('використано 2 / 2');
+
+  await startExport(page);
+  const request = page.getByTestId('export-need-originals');
+  await expect(request).toContainText('(2)');
+
+  const first = page.waitForEvent('filechooser');
+  await page.getByTestId('export-choose-originals').click();
+  await (await first).setFiles(join(FIXTURES, 'land-1.jpg'));
+  await expect(request).toContainText('(1)');
+  await expect(request).toContainText('Не знайдено: port-1.jpg');
+  await expect(request).not.toContainText('land-1.jpg');
+  await expect(page.getByTestId('export-continue')).toHaveCount(0);
+
+  const files = await zipOf(page, async () => {
+    const second = page.waitForEvent('filechooser');
+    await page.getByTestId('export-choose-originals').click();
+    await (await second).setFiles(join(FIXTURES, 'port-1.jpg'));
     await page.getByTestId('export-continue').click();
   });
   expect(jpegSize(files['spreads/spread-01.jpg'])).toEqual({ w: 7157, h: 3614 });

@@ -1,12 +1,11 @@
 // The print export: warnings first, then the files to write, progress, and a request for the
 // original photos when this session cannot read them.
 import { useEffect, useState } from 'preact/hooks';
-import { exportPlan, jobKind, MissingOriginalsError, runExport, type ExportKind } from '../export/export';
+import { exportPlan, jobKind, runExport, type ExportKind } from '../export/export';
 import { printWarnings, type PrintWarning } from '../model/pages';
 import type { Album, CellRef } from '../model/types';
-import { DECODE_LIMIT, describeFile, mapLimit, pickFiles } from '../photos/import';
-import { matchPhotos } from '../photos/match';
-import { registerOriginals } from '../photos/originals';
+import { pickFiles } from '../photos/import';
+import { MissingOriginalsError, registerChosenOriginals } from '../photos/originals';
 import type { AlbumStore } from '../state/store';
 import { hasPreviews } from '../storage/db';
 import { strings } from './strings';
@@ -14,7 +13,7 @@ import { strings } from './strings';
 type State =
   | { step: 'ready' }
   | { step: 'running'; done: number; total: number }
-  | { step: 'originals'; photoIds: string[]; unmatched: string[] }
+  | { step: 'originals'; photoIds: string[]; unmatched: string[]; ambiguous: string[]; sameName: string[] }
   | { step: 'matched' }
   | { step: 'done' }
   | { step: 'error'; message: string };
@@ -63,8 +62,11 @@ export function ExportDialog({ store, mobile, onClose }: { store: AlbumStore; mo
       await runExport(store.album.value, (done, total) => setState({ step: 'running', done, total }), kinds);
       setState({ step: 'done' });
     } catch (e) {
-      if (e instanceof MissingOriginalsError) setState({ step: 'originals', photoIds: e.photoIds, unmatched: [] });
+      if (e instanceof MissingOriginalsError) setState({ step: 'originals', photoIds: e.photoIds, unmatched: [], ambiguous: [], sameName: [] });
       else if (e instanceof DOMException && e.name === 'AbortError') setState({ step: 'ready' });
+      // A permission prompt and a read of a large folder can use up the time that a browser allows
+      // after a click. The folder picker then refuses, and it needs a new click.
+      else if (e instanceof DOMException && e.name === 'SecurityError') setState({ step: 'matched' });
       else setState({ step: 'error', message: e instanceof Error ? e.message : String(e) });
     }
   };
@@ -73,13 +75,15 @@ export function ExportDialog({ store, mobile, onClose }: { store: AlbumStore; mo
     const files = await pickFiles();
     if (files.length === 0) return;
     const wanted = store.album.value.photos.filter((p) => photoIds.includes(p.id));
-    // At most DECODE_LIMIT originals decode at the same time, as on import.
-    const { matched } = matchPhotos(wanted, await mapLimit(files, DECODE_LIMIT, (f) => describeFile(f)));
-    registerOriginals(new Map([...matched].map(([id, i]) => [id, files[i]] as const)));
-    const unmatched = wanted.filter((p) => !matched.has(p.id)).map((p) => p.name);
+    // The print export takes a close match with no question, so it does not read `inexact`.
+    const { left, ambiguous, unmatched, sameName } = await registerChosenOriginals(wanted, files);
     // The folder picker needs a fresh click: the file dialog and the decoding can take longer
     // than the few seconds a browser allows after the first one.
-    setState(unmatched.length > 0 ? { step: 'originals', photoIds, unmatched } : { step: 'matched' });
+    setState(
+      left.length > 0
+        ? { step: 'originals', photoIds: left.map((p) => p.id), unmatched, ambiguous, sameName }
+        : { step: 'matched' },
+    );
   };
 
   const options: ExportKind[] = mobile ? ['pages'] : ['spreads', 'pages'];
@@ -140,14 +144,16 @@ export function ExportDialog({ store, mobile, onClose }: { store: AlbumStore; mo
           <div class="note" data-testid="export-need-originals">
             <p>{strings.exportNeedOriginals(state.photoIds.length)}</p>
             {state.unmatched.length > 0 && <p>{strings.exportUnmatched(state.unmatched)}</p>}
+            {state.ambiguous.length > 0 && <p>{strings.originalsAmbiguous(state.ambiguous)}</p>}
+            {state.sameName.length > 0 && <p>{strings.originalsSameName(state.sameName)}</p>}
             <button type="button" class="primary" data-testid="export-choose-originals" onClick={() => void chooseOriginals(state.photoIds)}>
-              {strings.exportChooseOriginals}
+              {strings.chooseOriginals}
             </button>
           </div>
         )}
         {state.step === 'matched' && (
           <div class="note" data-testid="export-originals-found">
-            <p>{strings.exportOriginalsFound}</p>
+            <p>{strings.originalsFound}</p>
             <button type="button" class="primary" data-testid="export-continue" onClick={() => void start()}>
               {strings.exportContinue}
             </button>

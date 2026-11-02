@@ -3,19 +3,13 @@ import { Zip, ZipPassThrough } from 'fflate';
 import { printedPages } from '../model/pages';
 import type { Album, Rect } from '../model/types';
 import { canvasSizeMm, mmToPx, PAGE_W } from '../model/units';
-import { getOriginal } from '../photos/originals';
+import { readOriginals } from '../photos/originals';
+import { downloadBlob, folderPicker } from '../storage/layoutFile';
 import { renderRegion } from './render';
 
 export interface ExportJob { file: string; spreadId: string; regionMm: Rect; px: { w: number; h: number } }
 
 export type ExportKind = 'spreads' | 'pages';
-
-export class MissingOriginalsError extends Error {
-  constructor(readonly photoIds: string[]) {
-    super(`Original files are missing for ${photoIds.length} photo(s)`);
-    this.name = 'MissingOriginalsError';
-  }
-}
 
 const pad = (n: number, width: number) => String(n).padStart(width, '0');
 const pxOf = (r: Rect) => ({ w: mmToPx(r.w), h: mmToPx(r.h) });
@@ -48,11 +42,7 @@ export function exportPlan(a: Album): ExportJob[] {
 
 interface Sink { write(path: string, blob: Blob): Promise<void>; close(): Promise<void> }
 
-interface WritableDirWindow {
-  showDirectoryPicker?: (o: { mode: 'readwrite' }) => Promise<FileSystemDirectoryHandle>;
-}
-
-const safeName = (name: string) => name.replace(/[\\/:*?"<>|]+/g, '_').trim() || 'album';
+export const safeName = (name: string) => name.replace(/[\\/:*?"<>|]+/g, '_').trim() || 'album';
 
 async function folderSink(root: FileSystemDirectoryHandle, albumName: string): Promise<Sink> {
   const top = await root.getDirectoryHandle(`export-${safeName(albumName)}`, { create: true });
@@ -91,12 +81,7 @@ function zipSink(albumName: string): Sink {
     async close() {
       zip.end();
       await finished;
-      const url = URL.createObjectURL(new Blob(chunks, { type: 'application/zip' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `export-${safeName(albumName)}.zip`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      downloadBlob(new Blob(chunks, { type: 'application/zip' }), `export-${safeName(albumName)}.zip`, 60_000);
     },
   };
 }
@@ -117,16 +102,9 @@ export async function runExport(
     a.spreads.filter((s) => spreadIds.has(s.id)).flatMap((s) => s.cells.flatMap((c) => (c.photoId ? [c.photoId] : []))),
   );
 
-  const files = new Map<string, File>();
-  const missing: string[] = [];
-  for (const meta of a.photos.filter((p) => used.has(p.id))) {
-    const file = await getOriginal(a.id, meta);
-    if (file) files.set(meta.id, file);
-    else missing.push(meta.id);
-  }
-  if (missing.length > 0) throw new MissingOriginalsError(missing);
+  const files = await readOriginals(a.id, a.photos.filter((p) => used.has(p.id)));
 
-  const picker = (window as WritableDirWindow).showDirectoryPicker;
+  const picker = folderPicker();
   const sink = picker ? await folderSink(await picker({ mode: 'readwrite' }), a.name) : zipSink(a.name);
 
   onProgress(0, jobs.length);

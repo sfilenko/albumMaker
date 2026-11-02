@@ -48,6 +48,12 @@ export async function listAlbums(): Promise<{ id: string; name: string; updatedA
     .sort((x, y) => y.updatedAt - x.updatedAt);
 }
 
+/** The ids of the photos that a stored album holds. */
+export async function storedPhotoIds(): Promise<Set<string>> {
+  const all = await (await db()).getAll('albums');
+  return new Set(all.flatMap((a) => a.photos.map((p) => p.id)));
+}
+
 /** Deletes the album, the screen copies of its photos and its folder handle. */
 export async function deleteAlbum(id: string): Promise<void> {
   const d = await db();
@@ -84,8 +90,21 @@ export async function hasPreviews(ids: string[]): Promise<Set<string>> {
   return found;
 }
 
+/** Deletes both screen copies of each photo. */
+export async function deletePreviews(ids: string[]): Promise<void> {
+  const tx = (await db()).transaction('previews', 'readwrite');
+  for (const id of ids) {
+    for (const kind of KINDS) await tx.store.delete(previewKey(id, kind));
+  }
+  await tx.done;
+}
+
 export async function putDirHandle(albumId: string, h: FileSystemDirectoryHandle): Promise<void> {
   await (await db()).put('handles', h, albumId);
+}
+
+export async function deleteDirHandle(albumId: string): Promise<void> {
+  await (await db()).delete('handles', albumId);
 }
 
 export async function getDirHandle(albumId: string): Promise<FileSystemDirectoryHandle | undefined> {

@@ -13,16 +13,25 @@ export class LayoutFileError extends Error {
   }
 }
 
+/** The part of a file handle that a write uses. `FileSystemFileHandle` fits this type. */
+export interface WritableFile {
+  createWritable(): Promise<{ write(d: Blob): Promise<void>; close(): Promise<void>; abort(): Promise<void> }>;
+}
+
 // The File System Access pickers are not in every browser, nor in the DOM typings.
-interface PickerWindow {
+export interface PickerWindow {
   showSaveFilePicker?: (o: {
     suggestedName: string;
     types: { accept: Record<string, string[]> }[];
-  }) => Promise<{ createWritable(): Promise<{ write(d: Blob): Promise<void>; close(): Promise<void> }> }>;
+  }) => Promise<WritableFile>;
   showOpenFilePicker?: (o: { types: { accept: Record<string, string[]> }[] }) => Promise<{ getFile(): Promise<File> }[]>;
+  showDirectoryPicker?: (o: { mode: 'read' | 'readwrite' }) => Promise<FileSystemDirectoryHandle>;
 }
 
 const pickers = () => window as unknown as PickerWindow;
+
+/** The folder picker of this browser. A browser with no folder picker gives `undefined`. */
+export const folderPicker = () => pickers().showDirectoryPicker;
 
 export function serializeLayout(a: Album): string {
   return JSON.stringify({ format: FORMAT, version: VERSION, album: a });
@@ -45,7 +54,22 @@ export function parseLayout(text: string): Album {
   return album as Album;
 }
 
-const fileName = (a: Album) => `${a.name.replace(/[\\/:*?"<>|]/g, '_') || 'album'}${EXTENSION}`;
+/** The album name for a file name: `_` replaces each mark that a file name cannot hold. No name gives `album`. */
+export function safeBaseName(name: string): string {
+  return name.replace(/[\\/:*?"<>|]/g, '_') || 'album';
+}
+
+const fileName = (a: Album) => `${safeBaseName(a.name)}${EXTENSION}`;
+
+/** Starts a download. The object URL stays valid for `lifetimeMs`. */
+export function downloadBlob(blob: Blob, name: string, lifetimeMs: number): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), lifetimeMs);
+}
 
 /** Writes the layout file and returns the save time. */
 export async function saveLayoutFile(a: Album): Promise<number> {
@@ -60,12 +84,7 @@ export async function saveLayoutFile(a: Album): Promise<number> {
     await w.write(blob);
     await w.close();
   } else {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName(a);
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    downloadBlob(blob, fileName(a), 0);
   }
   return Date.now();
 }
@@ -74,7 +93,7 @@ function pickWithInput(): Promise<File> {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json,application/json';
+    input.accept = '.json,application/json,.zip,application/zip';
     input.addEventListener('change', () => {
       const f = input.files?.[0];
       if (f) resolve(f);
@@ -85,10 +104,26 @@ function pickWithInput(): Promise<File> {
   });
 }
 
-export async function openLayoutFile(): Promise<Album> {
+// The wait of the running picker. A browser rejects a second picker call while a picker is open.
+let runningPicker: Promise<File> | null = null;
+
+async function pickWithPicker(show: NonNullable<PickerWindow['showOpenFilePicker']>): Promise<File> {
+  const [handle] = await show({
+    types: [{ accept: { 'application/json': ['.json'], 'application/zip': ['.zip'] } }],
+  });
+  return handle.getFile();
+}
+
+/**
+ * A layout file or an album archive, which the person chooses. A cancel rejects with an `AbortError`.
+ * A call while a picker is open gets the promise of that picker, so each caller gets the same file or
+ * the same error. The file input has no kept promise: a browser with no cancel event never ends its wait.
+ */
+export function pickAlbumFile(): Promise<File> {
   const { showOpenFilePicker } = pickers();
-  const file = showOpenFilePicker
-    ? await (await showOpenFilePicker({ types: [{ accept: { 'application/json': ['.json'] } }] }))[0].getFile()
-    : await pickWithInput();
-  return parseLayout(await file.text());
+  if (!showOpenFilePicker) return pickWithInput();
+  runningPicker ??= pickWithPicker(showOpenFilePicker).finally(() => {
+    runningPicker = null;
+  });
+  return runningPicker;
 }

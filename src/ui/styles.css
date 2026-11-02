@@ -47,7 +47,9 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .editor.mobile .top-bar { flex-wrap: wrap; gap: 6px; }
 /* The buttons share the rows of the bar, so each one is on the screen without a scroll. */
 .editor.mobile .top-bar .actions { display: contents; }
-.editor.mobile .top-bar .actions button { flex: none; padding: 4px 6px; font-size: 13px; }
+.editor.mobile .top-bar .history button, .editor.mobile .top-bar .actions button { flex: none; padding: 4px; font-size: 13px; }
+/* A window near 900 px does not hold all the actions on one row. */
+.editor.desktop .top-bar { flex-wrap: wrap; }
 .panel { background: var(--panel); overflow: auto; }
 
 .editor.desktop {

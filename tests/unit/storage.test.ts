@@ -3,7 +3,20 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { addPhotos, createAlbum, renameAlbum } from '../../src/model/album';
 import type { Album } from '../../src/model/types';
 import { createAutosaver, restoreBackups } from '../../src/storage/autosave';
-import { deleteAlbum, getPreview, hasPreviews, listAlbums, loadAlbum, putPreview, saveAlbum } from '../../src/storage/db';
+import {
+  deleteAlbum,
+  deleteDirHandle,
+  deletePreviews,
+  getDirHandle,
+  getPreview,
+  hasPreviews,
+  listAlbums,
+  loadAlbum,
+  putDirHandle,
+  putPreview,
+  saveAlbum,
+  storedPhotoIds,
+} from '../../src/storage/db';
 import { LayoutFileError, parseLayout, serializeLayout } from '../../src/storage/layoutFile';
 
 const photo = (id: string) => ({ id, name: `${id}.jpg`, size: 1, width: 10, height: 10, takenAt: null, lastModified: 0 });
@@ -48,6 +61,47 @@ test('deleteAlbum also deletes the previews of its photos', async () => {
   expect(await loadAlbum(a.id)).toBeUndefined();
   expect(await getPreview('p1', 'full')).toBeUndefined();
   expect(await getPreview('p1', 'thumb')).toBeUndefined();
+});
+
+test('deletePreviews deletes both screen copies of the named photos and no other copy', async () => {
+  vi.useRealTimers();
+  for (const id of ['gone-1', 'gone-2', 'kept']) {
+    await putPreview(id, 'full', new Blob(['f']));
+    await putPreview(id, 'thumb', new Blob(['t']));
+  }
+  await deletePreviews(['gone-1', 'gone-2', 'never-stored']);
+  expect(await hasPreviews(['gone-1', 'gone-2', 'kept'])).toEqual(new Set(['kept']));
+  for (const id of ['gone-1', 'gone-2']) {
+    expect(await getPreview(id, 'full')).toBeUndefined();
+    expect(await getPreview(id, 'thumb')).toBeUndefined();
+  }
+  expect(await getPreview('kept', 'thumb')).toBeDefined();
+});
+
+test('storedPhotoIds gives the photos of each stored album, and a deleted album gives none', async () => {
+  vi.useRealTimers();
+  const a = addPhotos(createAlbum('a'), [photo('held-1'), photo('shared')]);
+  const b = addPhotos(createAlbum('b'), [photo('held-2'), photo('shared')]);
+  await saveAlbum(a);
+  await saveAlbum(b);
+  let ids = await storedPhotoIds();
+  for (const id of ['held-1', 'held-2', 'shared']) expect(ids.has(id)).toBe(true);
+  await deleteAlbum(a.id);
+  ids = await storedPhotoIds();
+  expect(ids.has('held-1')).toBe(false);
+  expect(ids.has('held-2')).toBe(true);
+  expect(ids.has('shared')).toBe(true);
+});
+
+test('deleteDirHandle deletes the handle of the named album and no other handle', async () => {
+  vi.useRealTimers();
+  const handle = (name: string) => ({ name }) as unknown as FileSystemDirectoryHandle;
+  await putDirHandle('album-1', handle('one'));
+  await putDirHandle('album-2', handle('two'));
+  await deleteDirHandle('album-1');
+  await deleteDirHandle('never-stored');
+  expect(await getDirHandle('album-1')).toBeUndefined();
+  expect((await getDirHandle('album-2'))?.name).toBe('two');
 });
 
 test('three schedule calls within 300 ms save once, with the last album', async () => {

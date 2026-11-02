@@ -8,6 +8,7 @@ import { matchPhotos } from '../photos/match';
 import { registerOriginals } from '../photos/originals';
 import type { AlbumStore } from '../state/store';
 import { putDirHandle } from '../storage/db';
+import { folderPicker } from '../storage/layoutFile';
 import { strings } from './strings';
 
 type RowState = 'open' | 'ambiguous' | 'missing';
@@ -112,7 +113,7 @@ export function RelinkDialog({
         </div>
         <p class="muted">{strings.relinkIntro}</p>
         <div class="relink-actions">
-          {'showDirectoryPicker' in window && (
+          {folderPicker() && (
             <button type="button" data-testid="relink-choose-folder" disabled={busy || rows.size === 0} onClick={() => void chooseFolder()}>
               {strings.relinkChooseFolder}
             </button>

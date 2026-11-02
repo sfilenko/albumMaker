@@ -1,4 +1,6 @@
 // Every string that the user sees. Later phases add their keys here.
+const percent = (done: number, total: number) => (total === 0 ? 0 : Math.floor((done * 100) / total));
+
 export const strings = {
   appTitle: 'Конструктор альбому',
   albums: 'Альбоми',
@@ -25,6 +27,7 @@ export const strings = {
   settings: 'Налаштування',
   preview: 'Перегляд',
   saveFile: 'Зберегти у файл',
+  saveArchive: 'Архів з фото',
   openFile: 'Відкрити файл',
   export: 'Експорт',
 
@@ -99,14 +102,58 @@ export const strings = {
   exportProgress: (done: number, total: number) => `Експорт: ${done} / ${total}`,
   exportNeedOriginals: (n: number) => `Для експорту потрібні оригінальні файли фото (${n}). Оберіть їх.`,
   exportUnmatched: (names: string[]) => `Не знайдено: ${names.join(', ')}.`,
-  exportChooseOriginals: 'Обрати оригінали',
-  exportOriginalsFound: 'Оригінали знайдено.',
+  originalsAmbiguous: (names: string[]) => `Неоднозначний збіг: ${names.join(', ')}. Оберіть по одному файлу для кожного з цих фото.`,
+  originalsSameName: (names: string[]) =>
+    `В альбомі кілька різних фото з назвою ${names.join(', ')}. Оберіть ще один файл із цією назвою.`,
+  chooseOriginals: 'Обрати оригінали',
+  originalsFound: 'Оригінали знайдено.',
   exportContinue: 'Продовжити експорт',
   exportDone: 'Експорт завершено.',
   exportError: (message: string) => `Експорт не вдався: ${message}`,
 
+  archiveTitle: 'Архів альбому з фото',
+  archiveCount: (n: number) => `Архів міститиме макет альбому й оригінальні файли використаних фото: ${n}.`,
+  archiveStart: 'Створити архів',
+  archiveProgress: (done: number, total: number) => `Створення архіву: ${percent(done, total)}%`,
+  archiveNeedOriginals: (n: number) => `Для архіву потрібні оригінальні файли фото (${n}). Оберіть їх.`,
+  archiveUnmatched: (names: string[]) => `Не знайдено: ${names.join(', ')}. Архів не створено.`,
+  archiveUnreadable: (name: string) => `Не вдалося прочитати файл «${name}». Оберіть його ще раз.`,
+  archiveMatching: (done: number, total: number) => `Пошук оригіналів: ${done} / ${total}`,
+  archiveInexact: (names: string[]) =>
+    `Назва або розмір цих файлів не такі, як у фото в альбомі: ${names.join(', ')}. Можливо, це не оригінали. Використати їх в архіві?`,
+  archiveInexactAccept: 'Використати ці файли',
+  archiveInexactChoose: 'Обрати інші',
+  archiveContinue: 'Продовжити',
+  archiveReady: 'Архів готовий. Натисніть кнопку, щоб зберегти файл.',
+  archiveSave: 'Зберегти архів',
+  archiveDownload: 'Завантажити архів',
+  archivePicking: 'Оберіть місце для архіву у вікні браузера.',
+  archiveWriting: (done: number, total: number) => `Запис архіву: ${percent(done, total)}%`,
+  archiveSaved: 'Архів збережено.',
+  archiveReceived: 'Браузер отримав файл. Перевірте завантаження в браузері.',
+  archiveTooLarge: 'Альбом завеликий для одного архіву: ZIP-файл вміщує до 4 ГБ.',
+  archiveError: (message: string) => `Не вдалося зберегти архів: ${message}`,
+
+  archiveOpenTitle: 'Відкриття архіву альбому',
+  archiveOpenVerifying: (done: number, total: number) => `Перевірка архіву: ${percent(done, total)}%`,
+  archiveOpenFolder: (n: number) =>
+    `Оберіть папку для оригінальних файлів фото (${n}). Програма створить у ній окрему папку альбому, і друк працюватиме також після перезавантаження сторінки. Без папки оригінали доступні лише до перезавантаження.`,
+  archiveOpenChooseFolder: 'Обрати папку',
+  archiveOpenPicking: 'Оберіть папку у вікні браузера.',
+  archiveOpenContinue: 'Продовжити без папки',
+  archiveOpenWriting: (done: number, total: number) => `Запис оригіналів у папку: ${percent(done, total)}%`,
+  archiveOpenImporting: (done: number, total: number) => `Підготовка фото: ${done} / ${total}`,
+  archiveOpenDone: 'Альбом відкрито.',
+  archiveOpenUndecodable: (names: string[]) =>
+    `Цей браузер не може показати ці фото: ${names.join(', ')}. Їхні оригінали залишаються в архіві.`,
+  archiveOpenDamaged: 'Архів пошкоджено: вміст фото не збігається із записаним. Альбом не змінено.',
+  archiveOpenStorage: 'Браузер не зміг підготувати й зберегти копії фото для екрана. Можливо, закінчилося вільне місце. Альбом не змінено.',
+  archiveOpenError: (message: string) => `Не вдалося відкрити архів: ${message}. Альбом не змінено.`,
+  archiveInvalid: 'Цей файл пошкоджено, або він не є архівом альбому. Альбом не змінено.',
+
   confirmReplaceAlbum: (name: string) => `Замінити наявний альбом? «${name}» у цьому браузері стане таким, як у файлі.`,
   layoutFileInvalid: 'Цей файл не є файлом макета альбому.',
+  layoutFileVersion: 'Цей файл створено в новішій версії програми. Оновіть сторінку й спробуйте ще раз.',
   openFileError: (message: string) => `Не вдалося відкрити файл: ${message}`,
   saveFileError: (message: string) => `Не вдалося зберегти файл: ${message}`,
 

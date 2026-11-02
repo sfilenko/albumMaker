@@ -6,6 +6,7 @@ import type { CellRef } from '../model/types';
 import type { AlbumStore } from '../state/store';
 import { hasPreviews } from '../storage/db';
 import { saveLayoutFile } from '../storage/layoutFile';
+import { ArchiveSaveDialog } from './ArchiveSaveDialog';
 import { Banners, PrintSummary } from './Banners';
 import { CellToolbar } from './CellToolbar';
 import { ExportDialog } from './ExportDialog';
@@ -59,6 +60,7 @@ export function Editor({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   // Photos without screen copies on this device: a layout file from another device brings them.
   const [missing, setMissing] = useState<ReadonlySet<string>>(new Set());
   const [relinking, setRelinking] = useState<string[] | null>(null);
@@ -86,7 +88,8 @@ export function Editor({
         armedPhoto.value = null;
         return;
       }
-      if (!(e.ctrlKey || e.metaKey) || isTyping(e.target)) return;
+      // The archive is built on one click and saved on the next, so the album must not change between them.
+      if (archiving || !(e.ctrlKey || e.metaKey) || isTyping(e.target)) return;
       const key = e.key.toLowerCase();
       if (key === 'z' && !e.shiftKey) store.undo();
       else if ((key === 'z' && e.shiftKey) || key === 'y') store.redo();
@@ -95,7 +98,7 @@ export function Editor({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [store]);
+  }, [store, archiving]);
 
   const select = (i: number) => {
     setSelected(null);
@@ -165,6 +168,14 @@ export function Editor({
   // A phone is a touch screen in the narrow layout; a narrow window with a mouse exports spreads.
   const phone = !desktop && window.matchMedia(COARSE_POINTER_QUERY).matches;
   const exportDialog = exporting && <ExportDialog store={store} mobile={phone} onClose={() => setExporting(false)} />;
+  const archiveDialog = archiving && (
+    <ArchiveSaveDialog
+      store={store}
+      // The save time is not an edit: it gets no undo step.
+      onSaved={(at) => store.replace({ ...store.album.value, lastFileSaveAt: at })}
+      onClose={() => setArchiving(false)}
+    />
+  );
   const relinkDialog = relinking && (
     <RelinkDialog store={store} photoIds={relinking} onRelinked={relinked} onClose={() => setRelinking(null)} />
   );
@@ -219,6 +230,16 @@ export function Editor({
         <button type="button" data-testid="action-save-file" onClick={() => void saveFile()}>
           {strings.saveFile}
         </button>
+        <button
+          type="button"
+          data-testid="action-save-archive"
+          onClick={() => {
+            setSettingsOpen(false);
+            setArchiving(true);
+          }}
+        >
+          {strings.saveArchive}
+        </button>
         <button type="button" data-testid="action-open-file" onClick={onOpenFile}>
           {strings.openFile}
         </button>
@@ -236,21 +257,26 @@ export function Editor({
     </header>
   );
 
+  // The archive holds the album of the first click, so no control behind its dialog can run until a
+  // close. The dialog is outside the inert part.
   if (desktop) {
     return (
-      <div class="editor desktop" data-testid="editor">
-        {topBar}
-        {photoPanel}
-        <section class="spread-area">
-          {spread}
-          {printSummary}
-        </section>
-        {templatePanel}
-        {spreadStrip}
-        {settings}
-        {exportDialog}
-        {relinkDialog}
-      </div>
+      <>
+        <div class="editor desktop" data-testid="editor" inert={archiving}>
+          {topBar}
+          {photoPanel}
+          <section class="spread-area">
+            {spread}
+            {printSummary}
+          </section>
+          {templatePanel}
+          {spreadStrip}
+          {settings}
+          {exportDialog}
+          {relinkDialog}
+        </div>
+        {archiveDialog}
+      </>
     );
   }
 
@@ -260,32 +286,35 @@ export function Editor({
     { id: 'spreads', label: strings.tabSpreads },
   ];
   return (
-    <div class="editor mobile" data-testid="editor">
-      {topBar}
-      <section class="spread-area">{spread}</section>
-      <div class="tabs" role="tablist">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            data-testid={`tab-${t.id}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
+    <>
+      <div class="editor mobile" data-testid="editor" inert={archiving}>
+        {topBar}
+        <section class="spread-area">{spread}</section>
+        <div class="tabs" role="tablist">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              data-testid={`tab-${t.id}`}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div class="tab-panel">
+          {tab === 'photos' && photoPanel}
+          {tab === 'templates' && templatePanel}
+          {tab === 'spreads' && spreadStrip}
+        </div>
+        {printSummary}
+        {settings}
+        {exportDialog}
+        {relinkDialog}
       </div>
-      <div class="tab-panel">
-        {tab === 'photos' && photoPanel}
-        {tab === 'templates' && templatePanel}
-        {tab === 'spreads' && spreadStrip}
-      </div>
-      {printSummary}
-      {settings}
-      {exportDialog}
-      {relinkDialog}
-    </div>
+      {archiveDialog}
+    </>
   );
 }

@@ -4,6 +4,7 @@ import exifr from 'exifr';
 import { newId } from '../model/album';
 import type { PhotoMeta } from '../model/types';
 import { putPreview, type PreviewKind } from '../storage/db';
+import { folderPicker } from '../storage/layoutFile';
 import type { Candidate } from './match';
 
 const ACCEPTED = /\.(jpe?g|png|webp)$/i;
@@ -11,8 +12,13 @@ export const DECODE_LIMIT = 2;
 const PREVIEW_EDGE: Record<PreviewKind, number> = { full: 1600, thumb: 320 };
 const PREVIEW_QUALITY = 0.85;
 
+/** The extension of an accepted name, as the name writes it. Any other name gives null. */
+export function acceptedExtension(name: string): string | null {
+  return ACCEPTED.exec(name)?.[0] ?? null;
+}
+
 export function isAccepted(name: string): boolean {
-  return ACCEPTED.test(name);
+  return acceptedExtension(name) !== null;
 }
 
 /** Runs `fn` over `items` with at most `limit` calls in progress, and keeps the input order. */
@@ -29,12 +35,9 @@ export async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T, i: nu
   return out;
 }
 
-// The directory picker is not in every browser, nor in the DOM typings.
-type DirPickerWindow = Window & { showDirectoryPicker?: (o: { mode: 'read' }) => Promise<FileSystemDirectoryHandle> };
-
 /** The top-level files of a folder, or null when the browser has no folder picker or the user cancels. */
 export async function pickFolder(): Promise<{ dir: FileSystemDirectoryHandle; files: File[] } | null> {
-  const picker = (window as DirPickerWindow).showDirectoryPicker;
+  const picker = folderPicker();
   if (!picker) return null;
   let dir: FileSystemDirectoryHandle;
   try {

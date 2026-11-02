@@ -1,13 +1,15 @@
 // The start screen is the album list. Opening an album creates its store and autosaver.
-// A layout file opens here too, from the list or from the editor.
+// A layout file and an album archive open here too, from the list or from the editor.
 import { signal, type ReadonlySignal } from '@preact/signals';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Album } from '../model/types';
 import { createAlbumStore, type AlbumStore } from '../state/store';
+import { ArchiveError, isZip, readArchive, type OpenedArchive } from '../storage/archive';
 import { createAutosaver, restoreBackups } from '../storage/autosave';
 import { loadAlbum, requestPersistence, saveAlbum } from '../storage/db';
-import { LayoutFileError, openLayoutFile } from '../storage/layoutFile';
+import { LayoutFileError, parseLayout, pickAlbumFile } from '../storage/layoutFile';
 import { AlbumList } from './AlbumList';
+import { ArchiveOpenDialog } from './ArchiveOpenDialog';
 import { Editor } from './Editor';
 import { strings } from './strings';
 
@@ -46,7 +48,13 @@ interface Session {
 
 let sessions = 0;
 
-/** `unsaved`: the album is not in IndexedDB yet (it comes from a layout file), so save it now. */
+function openFileMessage(e: unknown): string {
+  if (e instanceof LayoutFileError) return e.reason === 'version' ? strings.layoutFileVersion : strings.layoutFileInvalid;
+  if (e instanceof ArchiveError) return strings.archiveInvalid;
+  return strings.openFileError(e instanceof Error ? e.message : String(e));
+}
+
+/** `unsaved`: the album is not in IndexedDB yet (it comes from a file), so save it now. */
 function openSession(album: Album, unsaved = false): Session {
   const store = createAlbumStore(album);
   const storageError = signal(false);
@@ -86,6 +94,12 @@ function openSession(album: Album, unsaved = false): Session {
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [starting, setStarting] = useState(true);
+  const [openingArchive, setOpeningArchive] = useState<OpenedArchive | null>(null);
+  // One open at a time: the dialog verifies only the archive that it got first. This flag is set from
+  // the start of a read until the read ends or the dialog closes. It is a ref because a state value
+  // is old after the wait for a picker.
+  const opening = useRef(false);
+  const lastPickError = useRef<unknown>(null);
 
   useEffect(() => {
     // A copy that the last page kept at reload or close goes into IndexedDB before any read.
@@ -101,42 +115,86 @@ export function App() {
       .finally(() => setStarting(false));
   }, []);
 
-  const openFile = async () => {
-    let album: Album;
-    try {
-      album = await openLayoutFile();
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') return;
-      alert(e instanceof LayoutFileError ? strings.layoutFileInvalid : strings.openFileError(e instanceof Error ? e.message : String(e)));
-      return;
-    }
-    let existing: Album | undefined;
-    try {
-      existing = await loadAlbum(album.id);
-    } catch {
-      existing = undefined;
-    }
-    if (existing && !confirm(strings.confirmReplaceAlbum(existing.name))) return;
+  const replaceSession = async (album: Album) => {
     // The open album saves its last change first, so that change cannot overwrite the file's album.
     await session?.close();
     setSession(openSession(album, true));
   };
 
+  const openFile = async () => {
+    if (opening.current) return;
+    let file: File;
+    try {
+      // The flag stays clear during the wait: a browser with no cancel event never ends this wait.
+      file = await pickAlbumFile();
+    } catch (e) {
+      // A second click shares the wait of the first click, so both get this error and one alert is enough.
+      const seen = e === lastPickError.current;
+      lastPickError.current = e;
+      if (!seen && !(e instanceof DOMException && e.name === 'AbortError')) alert(openFileMessage(e));
+      return;
+    }
+    // A second click shares the wait of the first click, and it stops here. A second file chooser can
+    // also end while the first file is in a read or in the dialog.
+    if (opening.current) return;
+    opening.current = true;
+    let dialogShows = false;
+    try {
+      let archive: OpenedArchive | null = null;
+      let album: Album;
+      try {
+        if (await isZip(file)) {
+          archive = await readArchive(file);
+          album = archive.album;
+        } else {
+          album = parseLayout(await file.text());
+        }
+      } catch (e) {
+        alert(openFileMessage(e));
+        return;
+      }
+      let existing: Album | undefined;
+      try {
+        existing = await loadAlbum(album.id);
+      } catch {
+        existing = undefined;
+      }
+      if (existing && !confirm(strings.confirmReplaceAlbum(existing.name))) return;
+      if (archive) {
+        dialogShows = true;
+        setOpeningArchive(archive);
+      } else {
+        await replaceSession(album);
+      }
+    } finally {
+      if (!dialogShows) opening.current = false;
+    }
+  };
+
+  const closeArchiveDialog = () => {
+    opening.current = false;
+    setOpeningArchive(null);
+  };
+
   if (starting) return <p class="loading">{strings.loading}</p>;
-  if (session) {
-    return (
-      <Editor
-        key={session.key}
-        store={session.store}
-        storageError={session.storageError.value}
-        onOpenFile={openFile}
-        onClose={async () => {
-          await session.close();
-          remember(null);
-          setSession(null);
-        }}
-      />
-    );
-  }
-  return <AlbumList onOpen={(a) => setSession(openSession(a))} onOpenFile={openFile} />;
+  return (
+    <>
+      {session ? (
+        <Editor
+          key={session.key}
+          store={session.store}
+          storageError={session.storageError.value}
+          onOpenFile={openFile}
+          onClose={async () => {
+            await session.close();
+            remember(null);
+            setSession(null);
+          }}
+        />
+      ) : (
+        <AlbumList onOpen={(a) => setSession(openSession(a))} onOpenFile={openFile} />
+      )}
+      {openingArchive && <ArchiveOpenDialog opened={openingArchive} onReplace={replaceSession} onClose={closeArchiveDialog} />}
+    </>
+  );
 }
