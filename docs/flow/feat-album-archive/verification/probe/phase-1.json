@@ -1,0 +1,9 @@
+{
+  "phase": 1,
+  "feature": "feat-album-archive",
+  "probe_kind": "browser",
+  "checks": [],
+  "outcome": "skipped",
+  "skipped_reason": "no driven checks: the tripwire sweep is deferred to /df:probe all",
+  "deferred_to": "all"
+}

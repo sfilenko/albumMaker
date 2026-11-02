@@ -1,0 +1,307 @@
+{
+  "phase": 3,
+  "feature": "feat-album-archive",
+  "base": "626fdaa0a464b71758f5c53d70980edb18d8fe2f",
+  "evidence_sha256": "5c16b2f61ce9c7991db2aa31ca107ce09ee3f8c915e38d92c42490d219101c03",
+  "probe_kind": "browser",
+  "outcome": "pass",
+  "server": {
+    "started": true,
+    "ready_ms": 267,
+    "port": 5173,
+    "port_source": "declared",
+    "base_url": "http://localhost:5173",
+    "note": "ready_ms is the figure that Vite printed. The Playwright library drove the checks from the repository root (phase-3-probe.mjs in the evidence directory), because the rows need separate contexts, WebKit and phone emulation. Each variant used fresh contexts. All values per variant are in phase-3-probe-results.json. Three driver errors were fixed between runs, with no source change: one extra AC-3.14 row compared lastFileSaveAt, which the save sets after the driver read the album; one extra AC-3.22 regex expected the archive text for a ZIP whose album.json is not JSON; and the relink sweep expected a file chooser without its dialog and then chose 2 of 3 photos. The server was started a second time, on the port that doctor.mjs port resolved again, to add one AC-3.14 row that proves the changed gutter. doctor.mjs stop reported free_after true both times."
+  },
+  "preconditions": [
+    {
+      "what": "The file input of open-file accepts .zip (actual .json,application/json,.zip,application/zip), and choosing an archive shows archive-open-dialog. At base 626fdaa the input accepts only .json,application/json, and App.tsx has no ArchiveOpenDialog.",
+      "held": true,
+      "evidence": ".devflow/evidence/feat-album-archive/PRE.chromium-desktop.png"
+    }
+  ],
+  "checks": [
+    {
+      "id": "AC-3.10",
+      "result": "pass",
+      "assertions": [
+        { "then": "the editor shows with the album title of the archive", "actual": "Новий альбом in chromium-desktop and webkit-iphone13, with no alert", "ok": true },
+        { "then": "extra: the real showOpenFilePicker route gets a .zip type and opens the archive", "actual": "stubbed picker received application/zip ['.zip']; title Новий альбом", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.10.chromium-desktop.png", ".devflow/evidence/feat-album-archive/AC-3.10.chromium-desktop.console.log", ".devflow/evidence/feat-album-archive/AC-3.10.chromium-desktop.net.log", ".devflow/evidence/feat-album-archive/AC-3.10.webkit-iphone13.png", ".devflow/evidence/feat-album-archive/AC-3.10.webkit-iphone13.console.log", ".devflow/evidence/feat-album-archive/AC-3.10.chromium-desktop-showOpenFilePicker.console.log"]
+    },
+    {
+      "id": "AC-3.11",
+      "result": "pass",
+      "assertions": [
+        { "then": "the editor shows the album of the archive", "actual": "Новий альбом, no missing photo, in both engines", "ok": true },
+        { "then": "the earlier album stays in the album list", "actual": "[\"Раніший\",\"Новий альбом\"]; the earlier album reopens with land-2.jpg data-missing false", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.11.chromium-desktop.console.log", ".devflow/evidence/feat-album-archive/AC-3.11.webkit-iphone13.console.log"]
+    },
+    {
+      "id": "AC-3.12",
+      "result": "pass",
+      "assertions": [
+        { "then": "the editor opens with no open dialog", "actual": "archive-open-dialog count 0, no alert, in both engines", "ok": true },
+        { "then": "the photos show as missing, and the relink action is available", "actual": "missing-1-0 names land-1.jpg; find-missing visible", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.12.chromium-desktop.console.log", ".devflow/evidence/feat-album-archive/AC-3.12.webkit-iphone13.console.log"]
+    },
+    {
+      "id": "AC-3.13",
+      "result": "pass",
+      "assertions": [
+        { "then": "each thumb has data-missing false and an image", "actual": "land-1.jpg and port-1.jpg: false, naturalWidth above 0, in both engines", "ok": true },
+        { "then": "each used cell shows an image", "actual": "cell-1-0 and cell-1-1 decoded", "ok": true },
+        { "then": "no missing-photo banner and no relink dialog shows", "actual": "missing-bar 0, relink-dialog 0, no missing-photo warning", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.13.chromium-desktop.png", ".devflow/evidence/feat-album-archive/AC-3.13.chromium-desktop.console.log", ".devflow/evidence/feat-album-archive/AC-3.13.webkit-iphone13.png", ".devflow/evidence/feat-album-archive/AC-3.13.webkit-iphone13.console.log"]
+    },
+    {
+      "id": "AC-3.14",
+      "result": "pass",
+      "assertions": [
+        { "then": "given: the source album holds the changed crop, background and gutter", "actual": "zoom 1.5, background #000000, gapMm 9; the layout JSON differs after the gutter move", "ok": true },
+        { "then": "spreads and settings equal the values of the saved album, apart from the photo list", "actual": "deep equal for spreads and for settings; photos [\"land-1.jpg\",\"port-1.jpg\"]", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.14.chromium-desktop.console.log"]
+    },
+    {
+      "id": "AC-3.15",
+      "result": "pass",
+      "assertions": [
+        { "then": "the counter shows використано 2 / 2", "actual": "використано 2 / 2 in both engines", "ok": true },
+        { "then": "land-2.jpg is not in the photo column", "actual": "count 0; the archive holds album.json, photos/land-1.jpg, photos/port-1.jpg", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.15.chromium-desktop.console.log", ".devflow/evidence/feat-album-archive/AC-3.15.webkit-iphone13.console.log"]
+    },
+    {
+      "id": "AC-3.16",
+      "result": "pass",
+      "assertions": [
+        { "then": "the album opens with no missing photo", "actual": "saved on webkit-iphone13 and on chromium-pixel7; opened on desktop Chromium with no pickers, and with the folder stub and archive-open-continue: 2 / 2, every image decoded", "ok": true },
+        { "then": "the print export finishes", "actual": "export-done in the 3 variants", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.16.webkit-iphone13-to-chromium-desktop-no-pickers.console.log", ".devflow/evidence/feat-album-archive/AC-3.16.chromium-pixel7-to-chromium-desktop-no-pickers.console.log", ".devflow/evidence/feat-album-archive/AC-3.16.webkit-iphone13-to-chromium-desktop-folder-stub.console.log"]
+    },
+    {
+      "id": "AC-3.17",
+      "result": "pass",
+      "assertions": [
+        { "then": "the album opens with no missing photo, and no folder request shows", "actual": "webkit-iphone13 and chromium-pixel7: 2 / 2, every image decoded; the recorded data-state values hold no folder", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.17.chromium-desktop-to-webkit-iphone13.console.log", ".devflow/evidence/feat-album-archive/AC-3.17.chromium-desktop-to-chromium-pixel7.console.log"]
+    },
+    {
+      "id": "AC-3.18",
+      "result": "pass",
+      "assertions": [
+        { "then": "the subfolder album-<album name> holds each photo, with the sha256 of its fixture", "actual": "land-1.jpg f4c1db26..., port-1.jpg f9d274e5..., equal to the fixtures; the root holds only album-Новий альбом", "ok": true },
+        { "then": "the export finishes and export-need-originals does not show", "actual": "after a reload: export-done first, export-need-originals count 0", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.18.chromium-desktop.console.log"]
+    },
+    {
+      "id": "AC-3.19",
+      "result": "pass",
+      "assertions": [
+        { "then": "the first export finishes with no request", "actual": "export-done", "ok": true },
+        { "then": "the second export shows export-need-originals", "actual": "Для експорту потрібні оригінальні файли фото (2)", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.19.chromium-desktop.console.log"]
+    },
+    {
+      "id": "AC-3.20",
+      "result": "pass",
+      "assertions": [
+        { "then": "a counter shows at least two different values", "actual": "Перевірка архіву 0% to 100%, then Підготовка фото 0 / 9 to 9 / 9; with a folder also Запис оригіналів у папку", "ok": true },
+        { "then": "the album opens after the last value", "actual": "recorded order: last counter at index 41, editor at index 42; використано 9 / 9", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.20.chromium-desktop-no-pickers.console.log", ".devflow/evidence/feat-album-archive/AC-3.20.webkit-iphone13-no-pickers.console.log", ".devflow/evidence/feat-album-archive/AC-3.20.chromium-desktop-folder-stub.console.log"]
+    },
+    {
+      "id": "AC-3.21",
+      "result": "pass",
+      "assertions": [
+        { "then": "each cell shows its own photo", "actual": "after a reload: cell 0 rgb(77,203,77) green, cell 1 rgb(203,77,203) magenta", "ok": true },
+        { "then": "the subfolder holds two files with different names", "actual": "IMG_0001.jpg 6c15a6ec..., IMG_0001-2.jpg 6d59faa7..., equal to dup-a and dup-b", "ok": true },
+        { "then": "the export finishes and export-need-originals does not show", "actual": "export-done first", "ok": true },
+        { "then": "the pages of the two cells show different images", "actual": "page-001 rgb(77,203,77), page-002 rgb(203,77,203)", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.21.chromium-desktop.png", ".devflow/evidence/feat-album-archive/AC-3.21.chromium-desktop.console.log"]
+    },
+    {
+      "id": "AC-3.22",
+      "result": "pass",
+      "assertions": [
+        { "then": "each file gives a message", "actual": "cut in half, last 10 bytes cut, foreign ZIP, deflated ZIP: Цей файл пошкоджено, або він не є архівом альбому. Альбом не змінено. Empty file, .txt, ZIP whose album.json is not JSON: Цей файл не є файлом макета альбому.", "ok": true },
+        { "then": "an archive with a newer layout version gives a message about the version", "actual": "Цей файл створено в новішій версії програми. Оновіть сторінку й спробуйте ще раз.", "ok": true },
+        { "then": "the open album and the album list do not change", "actual": "after each of the 8 files: the album and the stored album are byte equal, no open dialog; the list holds 1 album; both engines", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.22.chromium-desktop.console.log", ".devflow/evidence/feat-album-archive/AC-3.22.webkit-iphone13.console.log"]
+    },
+    {
+      "id": "AC-3.23",
+      "result": "pass",
+      "assertions": [
+        { "then": "an error message shows in the open dialog", "actual": "Архів пошкоджено: вміст фото не збігається із записаним. Альбом не змінено.", "ok": true },
+        { "then": "the open album does not change", "actual": "the album and the stored album are byte equal, both engines", "ok": true },
+        { "then": "the store of screen copies holds no copy of a photo from that archive", "actual": "0", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.23.chromium-desktop.console.log", ".devflow/evidence/feat-album-archive/AC-3.23.webkit-iphone13.console.log"]
+    },
+    {
+      "id": "AC-3.24",
+      "result": "pass",
+      "assertions": [
+        { "then": "after the dismiss, the album does not change", "actual": "confirm: Замінити наявний альбом? «Змінений» ...; dismissed; album byte equal; no open dialog", "ok": true },
+        { "then": "after the accept, the album equals the archive", "actual": "deep equal to album.json of the archive, also after a reload; both engines", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.24.chromium-desktop.console.log", ".devflow/evidence/feat-album-archive/AC-3.24.webkit-iphone13.console.log"]
+    },
+    {
+      "id": "AC-3.25",
+      "result": "pass",
+      "assertions": [
+        { "then": "the album opens with an empty photo column", "actual": "0 photo thumbs, both engines", "ok": true },
+        { "then": "the counter shows використано 0 / 0", "actual": "використано 0 / 0", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.25.chromium-desktop.console.log", ".devflow/evidence/feat-album-archive/AC-3.25.webkit-iphone13.console.log"]
+    },
+    {
+      "id": "AC-3.26",
+      "result": "pass",
+      "assertions": [
+        { "then": "the album opens with no missing photo", "actual": "the stub rejected on call 1 with AbortError; the dialog reached done; 2 / 2, images decoded; no folder entry", "ok": true },
+        { "then": "the print export finishes before a reload", "actual": "export-done", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.26.chromium-desktop.console.log"]
+    },
+    {
+      "id": "AC-3.27",
+      "result": "pass",
+      "assertions": [
+        { "then": "the file with the other bytes still has its sha256", "actual": "exact name land-1.jpg keeps f9d274e5... (port-1 bytes), also after the export", "ok": true },
+        { "then": "the subfolder holds the original under another name", "actual": "land-1-2.jpg f4c1db26..., equal to the land-1 fixture; the album names land-1-2.jpg", "ok": true },
+        { "then": "the export finishes with no request, and the page shows the correct photo", "actual": "export-done after a reload; page-001 rgb(203,77,78) equals land-1 rgb(203,77,78), and port-1 is rgb(202,119,77)", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.27.chromium-desktop.console.log"]
+    },
+    {
+      "id": "AC-3.28",
+      "result": "pass",
+      "assertions": [
+        { "then": "an error message shows", "actual": "Не вдалося відкрити архів: No free space. Альбом не змінено.", "ok": true },
+        { "then": "the open album does not change", "actual": "the album and the stored album are byte equal", "ok": true },
+        { "then": "the store of screen copies holds no copy of a photo from that archive", "actual": "0; the subfolder holds no file", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.28.chromium-desktop.console.log"]
+    },
+    {
+      "id": "AC-3.29",
+      "result": "pass",
+      "assertions": [
+        { "then": "the dialog names that photo", "actual": "Цей браузер не може показати ці фото: land-1.jpg. Їхні оригінали залишаються в архіві.", "ok": true },
+        { "then": "the album opens, and the other photo shows", "actual": "title Новий альбом; port-1.jpg decoded in its thumb and its cell; both engines", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.29.chromium-desktop.console.log", ".devflow/evidence/feat-album-archive/AC-3.29.webkit-iphone13.console.log"]
+    },
+    {
+      "id": "AC-3.31",
+      "result": "pass",
+      "assertions": [
+        { "then": "an error message shows, and the album does not open with grey photos", "actual": "Браузер не зміг підготувати й зберегти копії фото для екрана...; missing-bar 0; cells decoded; driven by archive-open-choose-folder and by archive-open-continue", "ok": true },
+        { "then": "the stored folder handle is the earlier handle", "actual": "earlier, also after a reload", "ok": true },
+        { "then": "the album in the editor does not change", "actual": "the album and the stored album are byte equal; title Змінений, also after a reload", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.31.archive-open-choose-folder.console.log", ".devflow/evidence/feat-album-archive/AC-3.31.archive-open-continue.console.log"]
+    },
+    {
+      "id": "AC-3.32",
+      "result": "pass",
+      "assertions": [
+        { "then": "each photo shows an image, with no page reload", "actual": "before: missing-1-0 names land-1.jpg and missing-bar visible. After the accept: images decoded, missing-bar 0, the marker on window stays; both engines", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.32.chromium-desktop.console.log", ".devflow/evidence/feat-album-archive/AC-3.32.webkit-iphone13.console.log"]
+    },
+    {
+      "id": "AC-3.33",
+      "result": "pass",
+      "assertions": [
+        { "then": "the export dialog shows export-continue, and it shows no error", "actual": "export-continue visible; export-error count 0", "ok": true },
+        { "then": "the export finishes after the click", "actual": "export-done; the folder stub ran 2 times", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.33.chromium-desktop.console.log"]
+    },
+    {
+      "id": "AC-3.36",
+      "result": "pass",
+      "assertions": [
+        { "then": "the subfolder holds each photo one time, with no copy that has a -2 name", "actual": "choose-folder: stub ran 1 time, files land-1.jpg and port-1.jpg only. Continue: stub ran 0 times, no folder entry. Each button by a real mouse double click and by 2 clicks in one task", "ok": true },
+        { "then": "the album opens one time, and a later edit saves with no error", "actual": "4 screen copies written for 2 photos; the edit is stored; banner-storage-error 0; the list holds 2 albums", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.36.archive-open-continue-mouse-dblclick.console.log", ".devflow/evidence/feat-album-archive/AC-3.36.archive-open-continue-same-task-clicks.console.log", ".devflow/evidence/feat-album-archive/AC-3.36.archive-open-choose-folder-mouse-dblclick.console.log", ".devflow/evidence/feat-album-archive/AC-3.36.archive-open-choose-folder-same-task-clicks.console.log"]
+    },
+    {
+      "id": "AC-3.37",
+      "result": "pass",
+      "assertions": [
+        { "then": "control, added by the prober: with the old handle, the export reads the old folder", "actual": "2 reads, export-done", "ok": true },
+        { "then": "the export shows export-need-originals", "actual": "export-need-originals; the stored handle is null", "ok": true },
+        { "then": "the export does not read the old folder", "actual": "0 reads after the replace and the reload", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.37.chromium-desktop.console.log"]
+    },
+    {
+      "id": "AC-3.38",
+      "result": "pass",
+      "assertions": [
+        { "then": "archive-open-folder does not show", "actual": "count 0; the recorded data-state values hold no folder", "ok": true },
+        { "then": "the album opens, and the folder stub does not run", "actual": "використано 0 / 0; stub calls 0; no folder entry", "ok": true }
+      ],
+      "tripwire": { "console_errors": 0, "uncaught": 0, "http_5xx": 0, "allowlisted": 0, "boundary": false },
+      "evidence": [".devflow/evidence/feat-album-archive/AC-3.38.chromium-desktop.console.log"]
+    }
+  ],
+  "regression_sweep": [
+    { "surface": "album-list@chromium-desktop", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "settings-dialog@chromium-desktop", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "preview-mode@chromium-desktop", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "save-layout-file@chromium-desktop", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "relink-after-layout-file@chromium-desktop", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "print-export-session@chromium-desktop", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "print-export-choose-originals@chromium-desktop", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "album-list@webkit-iphone13", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "settings-dialog@webkit-iphone13", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "preview-mode@webkit-iphone13", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "save-layout-file@webkit-iphone13", "tripwire_clean": true, "console_errors": [] },
+    { "surface": "relink-after-layout-file@webkit-iphone13", "tripwire_clean": true, "console_errors": [] }
+  ],
+  "lessons_fired": []
+}

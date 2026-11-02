@@ -1,0 +1,488 @@
+phase: 2
+feature: feat-album-archive
+source: "Completion Criterion and Steps of Phase 2, .devflow/plan.md"
+checks:
+  - id: AC-2.1
+    kind: command
+    intent: the save spec, the top-bar spec, the drag spec and the print export spec pass
+    run: npx playwright test tests/e2e/archive-save.spec.ts tests/e2e/phone-actions.spec.ts tests/e2e/dnd.spec.ts tests/e2e/export.spec.ts
+    expect: exit == 0
+    falsifier: >
+      If the new button pushes the photo column down, the drag spec fails. If the refactor breaks
+      the print export, the export spec fails.
+    covers: [brief:R-1, brief:R-5, brief:R-6, brief:R-12, brief:R-14, brief:E-5]
+    blocking: true
+
+  - id: AC-2.2
+    kind: command
+    intent: the gates of the project pass on this phase
+    run: npm run typecheck && npm run build && npm test && npm run e2e
+    expect: exit == 0
+    falsifier: >
+      If the phase breaks any existing spec, or it has a type error, this exits non-zero.
+    covers: [brief:R-1]
+    blocking: true
+
+  - id: AC-2.3
+    kind: grep
+    intent: MissingOriginalsError is in the originals module
+    run: git grep --untracked -n "class MissingOriginalsError" -- src/photos/originals.ts
+    expect: matches == 1
+    falsifier: >
+      If the class stays in the export module, the dialog of this phase must import from the print
+      export, and this count is 0.
+    covers: [brief:R-5]
+    blocking: true
+
+  - id: AC-2.4
+    kind: grep
+    intent: the export module has no second copy of MissingOriginalsError
+    run: git grep --untracked -n "class MissingOriginalsError" -- src/export/export.ts
+    expect: matches == 0
+    falsifier: >
+      If two classes exist, an instanceof test in one dialog can miss the error of the other, and
+      this count is 1.
+    covers: [brief:R-5]
+    blocking: true
+
+  - id: AC-2.5
+    kind: grep
+    intent: the print export uses the shared reader of originals
+    run: git grep --untracked -n "readOriginals(" -- src/export/export.ts
+    expect: matches >= 1
+    falsifier: >
+      If the export keeps its own loop, two copies of the rule exist, and this count is 0.
+    covers: [brief:R-5]
+    blocking: true
+
+  - id: AC-2.6
+    kind: grep
+    intent: the export dialog uses the shared match of chosen files
+    run: git grep --untracked -n "registerChosenOriginals(" -- src/ui/ExportDialog.tsx
+    expect: matches >= 1
+    falsifier: >
+      If the export dialog keeps its own match code, two copies of the rule exist, and this count
+      is 0.
+    covers: [brief:R-5]
+    blocking: true
+
+  - id: AC-2.7
+    kind: grep
+    intent: the archive dialog uses both shared functions
+    run: git grep --untracked -nE "(readOriginals|registerChosenOriginals)\(" -- src/ui/ArchiveSaveDialog.tsx
+    expect: matches >= 2
+    falsifier: >
+      If the archive dialog has its own search for originals, it can disagree with the print
+      export, and this count is under 2.
+    covers: [brief:R-5, brief:R-6]
+    blocking: true
+
+  - id: AC-2.8
+    kind: grep
+    intent: the archive dialog does not change the album in the store
+    run: git grep --untracked -nE "\.(dispatch|replace)\(" -- src/ui/ArchiveSaveDialog.tsx
+    expect: matches == 0
+    falsifier: >
+      If the dialog writes the shortened album to the store, the saving device loses its unused
+      photos, and this count is at least 1.
+    covers: [brief:R-14]
+    blocking: true
+
+  - id: AC-2.9
+    kind: grep
+    intent: the archive dialog does not set the file save time itself
+    run: git grep --untracked -n "lastFileSaveAt:" -- src/ui/ArchiveSaveDialog.tsx
+    expect: matches == 0
+    falsifier: >
+      The Decision Log says that the editor sets the time through onSaved. If the dialog sets the
+      time, it writes to the store, and this count is at least 1.
+    covers: [brief:R-14]
+    blocking: true
+
+  - id: AC-2.10
+    kind: browser
+    intent: on a phone the archive action is on the screen without a scroll, and a tap opens its dialog
+    given: an album on a phone viewport with coarse pointer, at 320 px and at 390 px
+    when: read the bounding box of action-save-archive, then tap it
+    then:
+      - the right edge of each button in the top bar is at or under the viewport width
+      - the button text is Архів з фото
+      - the archive dialog is visible after the tap
+    tripwire: strict
+    evidence: [screenshot, console_log]
+    falsifier: >
+      If the button is past the right edge, the person cannot find it, as with the earlier export
+      button. If the tap opens nothing, the action does not work.
+    covers: [brief:R-1]
+    blocking: true
+
+  - id: AC-2.11
+    kind: browser
+    intent: the phone top bar stays at 3 rows at 390 px
+    given: an album at a viewport of 390 px with coarse pointer
+    when: read the top value of each button in the top bar
+    then:
+      - the top values have at most 3 distinct rows
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If a fourth row appears, the photo column moves down, and a drop at its centre leaves the
+      screen, which breaks the drag to the photo column.
+    covers: [brief:R-1]
+    blocking: true
+
+  - id: AC-2.12
+    kind: browser
+    intent: at the narrowest desktop width every action stays on the screen
+    given: an album at a viewport of 900 px with a mouse
+    when: read the bounding box of each button in the top bar
+    then:
+      - the right edge of each button is at or under 900
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the new button pushes another button past 900 px, a desktop user with a narrow window
+      cannot reach it.
+    covers: [brief:R-1]
+    blocking: true
+
+  - id: AC-2.13
+    kind: browser
+    intent: on a browser with no save picker, the save gives one ZIP that holds only the used photos with their exact bytes
+    given: phone emulation with showSaveFilePicker and showDirectoryPicker removed, an album of 3 photos where cells use land-1.jpg and port-1.jpg, and land-2.jpg is unused
+    when: open the archive dialog, start the save, wait for the link, tap the link, and read the downloaded file with a ZIP tool
+    then:
+      - exactly one download starts, and its name ends with .album.zip
+      - the ZIP holds album.json, photos/land-1.jpg and photos/port-1.jpg, and no other entry
+      - the sha256 of each photo equals the sha256 of its fixture
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If land-2.jpg is in the ZIP, or a photo is a screen copy, or the name is wrong, this fails.
+    covers: [brief:R-2, brief:R-4]
+    blocking: true
+
+  - id: AC-2.14
+    kind: browser
+    intent: with a save picker, the first click builds, and a second click asks for the file and writes it
+    given: desktop Chromium with a showSaveFilePicker stub that records its call time and returns a file of navigator.storage.getDirectory()
+    when: click start in the archive dialog, wait for the link state, then click the save button
+    then:
+      - the stub does not run before the second click
+      - a counter advances during the write
+      - the stored file holds album.json and the used photos
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the app calls the picker after a long build with no new click, the browser refuses the
+      picker on a large album. If it calls the picker before the build, a missing photo can leave an
+      empty file on disk.
+    covers: [brief:R-2, brief:R-4]
+    blocking: true
+
+  - id: AC-2.15
+    kind: browser
+    intent: a cancel of the save picker writes nothing and shows no error
+    given: desktop Chromium with a showSaveFilePicker stub that rejects with an AbortError
+    when: click start, wait for the link state, then click the save button
+    then:
+      - the dialog returns to the link state
+      - no error message shows
+      - no download starts
+      - a second click calls the picker again, and the counter of the build does not restart
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the app shows an error or a done message after a cancel, this fails.
+    covers: [brief:E-5]
+    blocking: true
+
+  - id: AC-2.16
+    kind: browser
+    intent: after a reload, the save asks only for the originals of used photos, and a new click completes the save
+    given: an album of 3 photos with 2 used, after a page reload, with no folder handle
+    when: start the save, choose the 2 fixtures in the file chooser, click the continue button, wait for the link state, then click the save button
+    then:
+      - the request states the number 2
+      - the file chooser opens only after a click on the button in the dialog
+      - the archive builds after the continue click, and the save completes after the save click
+    tripwire: strict
+    evidence: [screenshot, console_log]
+    falsifier: >
+      If the request counts the unused photo, or the save starts with no new click, this fails.
+    covers: [brief:R-5]
+    blocking: true
+
+  - id: AC-2.17
+    kind: browser
+    intent: with one original not chosen, no archive is written and the photo is named
+    given: an album of 2 used photos after a page reload, with no folder handle
+    when: start the save and choose only one fixture
+    then:
+      - no download starts
+      - the name of the other photo shows in the dialog
+    tripwire: strict
+    evidence: [screenshot, console_log]
+    falsifier: >
+      If a ZIP starts with one photo, the person gets an incomplete album and thinks it is complete.
+    covers: [brief:R-6]
+    blocking: true
+
+  - id: AC-2.18
+    kind: browser
+    intent: the save shows progress, then a clear result
+    given: an album of 9 used photos
+    when: start the save and read the dialog during the run and at its end
+    then:
+      - a counter shows at least two different values
+      - a result message shows at the end
+      - on the link route, the message says that the browser received the file, and it does not say that the save completed
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the dialog shows no counter, a long save looks like a frozen app.
+    covers: [brief:R-12]
+    blocking: true
+
+  - id: AC-2.19
+    kind: browser
+    intent: the album on the saving device changes only in its file save time
+    given: an album of 3 photos with 2 used
+    when: read the counter and the stored album JSON, save the archive, then read them again
+    then:
+      - the counter stays at використано 2 / 3
+      - land-2.jpg is still in the photo column
+      - with lastFileSaveAt removed, the album JSON is equal before and after the save
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the save writes the shortened album to the store, the unused photo leaves the column.
+    covers: [brief:R-14]
+    blocking: true
+
+  - id: AC-2.20
+    kind: browser
+    intent: a failure during the save shows an error and no done message
+    given: desktop Chromium with a showSaveFilePicker stub whose createWritable rejects
+    when: click start, wait for the link state, then click the save button
+    then:
+      - an error message shows
+      - no done message shows
+      - the album JSON does not change
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the failure is silent, or the dialog says done, the person trusts a file that does not exist.
+    covers: [brief:E-8]
+    blocking: true
+
+  - id: AC-2.21
+    kind: browser
+    intent: two rounds of the file chooser find two photos with the same name
+    given: an album that uses the IMG_0001.jpg of tests/fixtures/dup-a and the IMG_0001.jpg of tests/fixtures/dup-b, after a page reload, with no folder handle
+    when: start the save, choose the first file, then choose the second file in a second round
+    then:
+      - the second round asks only for the photo that is still missing
+      - the dialog reaches the continue state
+      - the ZIP holds both photos, each with the sha256 of its fixture
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the second round asks again for all photos, the first photo shows as not found, and the
+      save stays blocked.
+    covers: [brief:E-1, brief:R-5]
+    blocking: true
+
+  - id: AC-2.22
+    kind: browser
+    intent: a file that stops being readable returns the dialog to the request for that photo
+    given: an album with 2 used photos, and a stub that makes one read of a photo file reject with a NotReadableError
+    when: start the save
+    then:
+      - the dialog asks for that photo and names it
+      - no download starts
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the failure gives a general error, the person cannot repair it with no reload.
+    covers: [brief:R-5, brief:R-6, brief:E-8]
+    blocking: true
+
+  - id: AC-2.23
+    kind: browser
+    intent: a double click on the save button calls the save picker one time
+    given: desktop Chromium with a showSaveFilePicker stub that stays open until the test resolves it
+    when: click start, wait for the link state, double click archive-save, then resolve the stub
+    then:
+      - the stub ran one time
+      - no error message shows
+      - the dialog reaches the done state
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the second click calls the picker again, a browser rejects it, and the dialog shows a false
+      save error while the first picker is open.
+    covers: [brief:E-13]
+    blocking: true
+
+  - id: AC-2.24
+    kind: browser
+    intent: a chosen file of another size needs a click before the save goes on, and the accept button keeps it
+    given: an album that uses land-1.jpg after a page reload, with no folder handle, and a file named land-1.jpg with the same pixel size and another byte size
+    when: start the save, choose that file, read the dialog, click archive-inexact-accept, then click the continue button
+    then:
+      - archive-inexact names land-1.jpg
+      - archive-continue does not show before the click on archive-inexact-accept
+      - the archive builds after the continue click, and it holds the chosen file
+    tripwire: strict
+    evidence: [screenshot, console_log]
+    falsifier: >
+      If the dialog goes to the continue state with no question, a resized copy enters the archive
+      as an original, and the person does not know.
+    covers: [brief:R-16]
+    blocking: true
+
+  - id: AC-2.25
+    kind: browser
+    intent: the other button of the close match removes the file and asks for the photo again
+    given: the same album and file as AC-2.24
+    when: start the save, choose that file, click archive-inexact-choose, then choose the exact fixture
+    then:
+      - archive-need-originals shows for 1 photo after the click
+      - after the exact fixture, the dialog reaches the continue state with no archive-inexact
+      - the sha256 of the photo in the ZIP equals the sha256 of the exact fixture
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the click does not forget the file, the close copy still enters the archive.
+    covers: [brief:R-16]
+    blocking: true
+
+  - id: AC-2.26
+    kind: browser
+    intent: the print export takes a close file with no extra question
+    given: the same album and file as AC-2.24, with the print export dialog in place of the archive dialog
+    when: start the export and choose that file
+    then:
+      - the export dialog shows no close-match question
+      - the dialog reaches its usual next state
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the export also asks, C-35 changed, and the person did not ask for that.
+    covers: [brief:R-16]
+    blocking: true
+
+  - id: AC-2.27
+    kind: browser
+    intent: a save sets the file save time, and a cancel or a failed write does not
+    given: an album with a known lastFileSaveAt
+    when: save on the link route, save on the picker route, cancel the picker, and fail a write, with a read of lastFileSaveAt after each one
+    then:
+      - the value is the time of the save after the link route and after the picker route
+      - the value does not change after a cancel
+      - the value does not change after a failed write
+      - the counter and the photo column do not change after any of these
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If a cancel resets the time, the reminder stops, but no file exists, and the person loses the
+      protection of the reminder.
+    covers: [brief:R-15]
+    blocking: true
+
+  - id: AC-2.28
+    kind: browser
+    intent: a stored folder that no longer exists gives the request for originals
+    given: desktop Chromium, an album with a stored folder handle of navigator.storage.getDirectory(), and that folder removed before the save
+    when: reload, then start the save
+    then:
+      - archive-need-originals shows
+      - archive-error does not show
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the rejection of dir.values() reaches the dialog, the person gets a general error, and each
+      new click repeats it.
+    covers: [brief:E-11]
+    blocking: true
+
+  - id: AC-2.29
+    kind: browser
+    intent: the second round for a duplicate name does not say not found
+    given: an album that uses the IMG_0001.jpg of tests/fixtures/dup-a and of tests/fixtures/dup-b, after a page reload, with no folder handle
+    when: start the save and choose only the file of dup-a
+    then:
+      - the dialog asks for one more file and names IMG_0001.jpg
+      - the dialog does not show the text Не знайдено
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the dialog says not found, the person thinks that the chosen file was refused.
+    covers: [brief:E-1]
+    blocking: true
+
+  - id: AC-2.30
+    kind: browser
+    intent: the match of chosen files shows a live count
+    given: an album of 2 used photos after a page reload, with no folder handle
+    when: start the save, choose both files, and record the dialog text during the match
+    then:
+      - archive-matching shows a count of the chosen files
+      - archive-close is disabled during the match
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the dialog shows a save at 0%, a long match looks like a frozen app.
+    covers: [brief:R-12]
+    blocking: true
+
+  - id: AC-2.31
+    kind: browser
+    intent: the archive asks about a close file that the print export took earlier in the session
+    given: an album that uses land-1.jpg after a page reload, with no folder handle, and a print export dialog that took a file named land-1.jpg with the same pixel size and another byte size
+    when: close the print export dialog, start the archive save, read the dialog, then click archive-inexact-accept
+    then:
+      - archive-inexact names land-1.jpg
+      - archive-save does not show before the click on archive-inexact-accept
+      - after the click, the dialog asks no second time, and the archive holds the chosen file
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If readOriginals gives the file from memory and the dialog makes no check, the resized copy
+      enters the archive as an original, and archive-inexact does not show.
+    covers: [brief:R-16]
+    blocking: true
+
+  - id: AC-2.32
+    kind: browser
+    intent: the undo and redo keys do not change the album while the archive save dialog is open
+    given: an album with one edit in its undo history
+    when: start the save, wait for the link state, press Control+Z, press Control+Y, read the album JSON, close the dialog, then press Control+Z
+    then:
+      - the album JSON is equal before and after each key in the dialog
+      - after the close, Control+Z removes the edit
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the key handler stays active, an undo changes the album in the store, and the built file
+      holds an earlier album.
+    covers: [brief:E-14]
+    blocking: true
+
+  - id: AC-2.33
+    kind: browser
+    intent: the Tab key does not reach a control behind the archive save dialog
+    given: an album with one edit in its undo history
+    when: start the save, wait for the link state, press Tab 30 times and record the focused element after each press, press Enter, read the album JSON, close the dialog, then click the undo button
+    then:
+      - no focused element is outside the dialog, apart from the page body
+      - the album JSON does not change while the dialog is open
+      - after the close, the undo button removes the edit
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the page behind stays active, the Tab key reaches the undo button, Enter runs the undo, and
+      the saved file then holds an earlier album than the screen.
+    covers: [brief:E-14]
+    blocking: true

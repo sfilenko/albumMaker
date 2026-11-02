@@ -1,0 +1,605 @@
+phase: 3
+feature: feat-album-archive
+source: "Completion Criterion and Steps of Phase 3, .devflow/plan.md"
+checks:
+  - id: AC-3.1
+    kind: command
+    intent: the gates of the project pass on the final tree, including the open spec
+    run: npm run typecheck && npm run build && npm test && npm run e2e
+    expect: exit == 0
+    falsifier: >
+      If the open route breaks an existing spec, such as the relink spec that opens a layout file,
+      or the new spec fails, this exits non-zero.
+    covers: [brief:R-7, brief:R-8, brief:R-9, brief:R-10, brief:R-11]
+    blocking: true
+
+  - id: AC-3.2
+    kind: grep
+    intent: the old open function has no caller
+    run: git grep --untracked -n "openLayoutFile(" -- src tests
+    expect: matches == 0
+    falsifier: >
+      If a caller stays, it opens only JSON, and the archive route has a gap.
+    covers: [brief:R-7]
+    blocking: true
+
+  - id: AC-3.3
+    kind: grep
+    intent: the app shell uses the new picker
+    run: git grep --untracked -n "pickAlbumFile(" -- src/ui/App.tsx
+    expect: matches >= 1
+    falsifier: >
+      If the shell does not call it, the button cannot choose a ZIP, and this count is 0.
+    covers: [brief:R-7]
+    blocking: true
+
+  - id: AC-3.4
+    kind: grep
+    intent: both pick routes accept a ZIP
+    run: git grep --untracked -n "\.zip" -- src/storage/layoutFile.ts
+    expect: matches >= 2
+    falsifier: >
+      If only showOpenFilePicker or only the file input accepts a ZIP, one browser family cannot
+      choose the archive, and this count is under 2.
+    covers: [brief:R-7, brief:R-9]
+    blocking: true
+
+  - id: AC-3.5
+    kind: grep
+    intent: the database module can delete screen copies
+    run: git grep --untracked -n "export async function deletePreviews(" -- src/storage/db.ts
+    expect: matches == 1
+    falsifier: >
+      If the function is absent, a failed open leaves screen copies of an album that does not exist.
+    covers: [brief:E-8]
+    blocking: true
+
+  - id: AC-3.6
+    kind: grep
+    intent: a unit test covers the delete of screen copies
+    run: git grep --untracked -n "deletePreviews(" -- tests/unit/storage.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If no test calls it, a wrong key format deletes nothing and nobody sees it.
+    covers: [brief:E-8]
+    blocking: true
+
+  - id: AC-3.7
+    kind: grep
+    intent: the open dialog stores the folder handle
+    run: git grep --untracked -n "putDirHandle(" -- src/ui/ArchiveOpenDialog.tsx
+    expect: matches >= 1
+    falsifier: >
+      If the handle is not stored, the print export asks for originals after each reload.
+    covers: [brief:R-10]
+    blocking: true
+
+  - id: AC-3.8
+    kind: grep
+    intent: the open spec tests the folder with a stub that survives a reload
+    run: git grep --untracked -n "getDirectory(" -- tests/e2e/archive-open.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the spec has no folder stub, the folder route of R-10 has no test, and this count is 0.
+    covers: [brief:R-10]
+    blocking: true
+
+  - id: AC-3.9
+    kind: grep
+    intent: the open spec starts both browser engines for the two directions
+    run: git grep --untracked -nE "(webkit|chromium)\.launch\(" -- tests/e2e/archive-open.spec.ts
+    expect: matches >= 1
+    falsifier: >
+      If the spec runs each project alone, no test moves a file from one engine to the other, and
+      this count is 0.
+    covers: [brief:R-9]
+    blocking: true
+
+  - id: AC-3.10
+    kind: browser
+    intent: the album list opens an archive
+    given: a clean browser context with no album, and an archive of 2 used photos
+    when: click open-file on the album list and choose the archive, then finish the open dialog
+    then:
+      - the editor shows with the album title of the archive
+    tripwire: strict
+    evidence: [screenshot, console_log, network_log]
+    falsifier: >
+      If the picker refuses a ZIP, or the app reads the ZIP as JSON and shows the invalid-file alert,
+      this fails.
+    covers: [brief:R-7]
+    blocking: true
+
+  - id: AC-3.11
+    kind: browser
+    intent: the editor opens an archive
+    given: another album open in the editor, and an archive of 2 used photos
+    when: click action-open-file and choose the archive, then finish the open dialog
+    then:
+      - the editor shows the album of the archive
+      - the earlier album stays in the album list
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If only the album list has the route, or the earlier album is lost, this fails.
+    covers: [brief:R-7]
+    blocking: true
+
+  - id: AC-3.12
+    kind: browser
+    intent: a layout file still opens as before
+    given: a clean browser context and a .album.json of an album with photos
+    when: click open-file and choose the layout file
+    then:
+      - the editor opens with no open dialog
+      - the photos show as missing, and the relink action is available
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the new route treats JSON as an archive, or the relink route breaks, C-26 and C-27 fail.
+    covers: [brief:R-7]
+    blocking: true
+
+  - id: AC-3.13
+    kind: browser
+    intent: after an open, every photo shows and no relink is needed
+    given: a clean browser context that never had this album, and an archive of 2 used photos
+    when: open the archive and go to the spread with the photos
+    then:
+      - each thumb has data-missing false and an image
+      - each used cell shows an image
+      - no missing-photo banner and no relink dialog shows
+    tripwire: strict
+    evidence: [screenshot, console_log]
+    falsifier: >
+      If the app skips the screen copies, the photos show as missing, as with a layout file.
+    covers: [brief:R-8]
+    blocking: true
+
+  - id: AC-3.14
+    kind: browser
+    intent: the spreads, the cells, the crops and the settings equal those of the saved album
+    given: an album with a changed crop, a changed background and a changed gutter, saved as an archive, and a clean browser context
+    when: open the archive and read the album JSON
+    then:
+      - spreads and settings equal the values of the saved album, apart from the photo list
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the crop or the background resets to a default, the album prints differently from the
+      phone version.
+    covers: [brief:R-3]
+    blocking: true
+
+  - id: AC-3.15
+    kind: browser
+    intent: the opened album lists only the used photos
+    given: an archive saved from an album of 3 photos with 2 used
+    when: open the archive in a clean browser context
+    then:
+      - the counter shows використано 2 / 2
+      - land-2.jpg is not in the photo column
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the unused photo stays in the list with no file, the photo shows as missing on the computer.
+    covers: [brief:R-14]
+    blocking: true
+
+  - id: AC-3.16
+    kind: browser
+    intent: an archive from a phone opens on a computer
+    given: an archive saved in phone emulation with no pickers
+    when: open it in a desktop browser context with a mouse
+    then:
+      - the album opens with no missing photo
+      - the print export finishes
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the phone route writes a ZIP that the desktop route refuses, the main scenario of the
+      feature fails.
+    covers: [brief:R-9]
+    blocking: true
+
+  - id: AC-3.17
+    kind: browser
+    intent: an archive from a computer opens on a phone
+    given: an archive saved in a desktop context, and phone emulation with no pickers
+    when: open it in the phone context
+    then:
+      - the album opens with no missing photo, and no folder request shows
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the phone shows a folder step with no picker, the open cannot finish.
+    covers: [brief:R-9]
+    blocking: true
+
+  - id: AC-3.18
+    kind: browser
+    intent: with a folder, the print export works after a reload and asks for nothing
+    given: desktop Chromium with a showDirectoryPicker stub that returns a folder of navigator.storage.getDirectory()
+    when: open an archive, click the folder button, read the subfolder, reload the page, and run the print export
+    then:
+      - the subfolder album-<album name> holds each photo, with the sha256 of its fixture
+      - the export finishes and export-need-originals does not show
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the handle or the file names do not match the album, the export asks for originals after
+      the reload.
+    covers: [brief:R-10]
+    blocking: true
+
+  - id: AC-3.19
+    kind: browser
+    intent: without a folder, the export uses the originals until a reload, and then asks for them
+    given: a browser context with showDirectoryPicker removed, and an archive opened there
+    when: run the print export, reload the page, and run the print export again
+    then:
+      - the first export finishes with no request
+      - the second export shows export-need-originals
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the app does not register the originals, the first export asks for files. If it claims
+      a folder, the second export gives a wrong message.
+    covers: [brief:R-11]
+    blocking: true
+
+  - id: AC-3.20
+    kind: browser
+    intent: the open shows progress, then a clear result
+    given: an archive of 9 used photos
+    when: open it and read the dialog during the run
+    then:
+      - a counter shows at least two different values
+      - the album opens after the last value
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If no counter shows, a long open looks like a frozen app.
+    covers: [brief:R-12]
+    blocking: true
+
+  - id: AC-3.21
+    kind: browser
+    intent: two photos with the same name each keep their own original
+    given: an album with one file from tests/fixtures/dup-a and the file with the same name from tests/fixtures/dup-b, each in its own cell, saved as an archive
+    when: open the archive with the folder stub, reload the page, and run the print export
+    then:
+      - each cell shows its own photo
+      - the subfolder holds two files with different names
+      - the export finishes and export-need-originals does not show
+      - the pages of the two cells show different images
+    tripwire: strict
+    evidence: [screenshot, console_log]
+    falsifier: >
+      If the second file overwrites the first, both cells print the same photo.
+    covers: [brief:E-1]
+    blocking: true
+
+  - id: AC-3.22
+    kind: browser
+    intent: a wrong file gives a clear message and changes nothing
+    given: an album open in the editor, an archive cut short, a ZIP made by another tool, and a .txt file
+    when: open each file in turn
+    then:
+      - each file gives a message
+      - an archive with a newer layout version gives a message about the version
+      - the open album and the album list do not change
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If any file gives an uncaught exception, or it replaces the album, this fails.
+    covers: [brief:E-2]
+    blocking: true
+
+  - id: AC-3.23
+    kind: browser
+    intent: a changed photo byte is found before the album opens
+    given: an album open in the editor, and an archive with one changed byte inside a photo
+    when: open the archive
+    then:
+      - an error message shows in the open dialog
+      - the open album does not change
+      - the store of screen copies holds no copy of a photo from that archive
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If verify runs after the writes, a damaged photo replaces a good album.
+    covers: [brief:E-2, brief:E-8]
+    blocking: true
+
+  - id: AC-3.24
+    kind: browser
+    intent: an album with the same id asks for a confirmation
+    given: the album of the archive exists in this browser
+    when: open the archive, dismiss the confirmation, open it again, and accept the confirmation
+    then:
+      - after the dismiss, the album does not change
+      - after the accept, the album equals the archive
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If no confirmation shows, an open destroys the local album with no warning.
+    covers: [brief:E-3]
+    blocking: true
+
+  - id: AC-3.25
+    kind: browser
+    intent: an archive with no used photo opens
+    given: an archive saved from an album where no cell uses a photo
+    when: open it in a clean browser context
+    then:
+      - the album opens with an empty photo column
+      - the counter shows використано 0 / 0
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the app needs at least one photo, the open fails on an empty album.
+    covers: [brief:E-4]
+    blocking: true
+
+  - id: AC-3.26
+    kind: browser
+    intent: a cancel of the folder picker still opens the album
+    given: desktop Chromium with a showDirectoryPicker stub that rejects with an AbortError
+    when: open an archive and click the folder button
+    then:
+      - the album opens with no missing photo
+      - the print export finishes before a reload
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the cancel stops the open, or it shows an error, this fails.
+    covers: [brief:E-6]
+    blocking: true
+
+  - id: AC-3.27
+    kind: browser
+    intent: a different file with the same name in the subfolder stays, and the album finds its own photo
+    given: the folder stub, with a subfolder album-<album name> that holds land-1.jpg with other bytes
+    when: open an archive with land-1.jpg, click the folder button, reload the page, and run the print export
+    then:
+      - the file with the other bytes still has its sha256
+      - the subfolder holds the original under another name
+      - the export finishes with no request, and the page shows the correct photo
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the app overwrites the file, it destroys a file of the person.
+    covers: [brief:E-7]
+    blocking: true
+
+  - id: AC-3.28
+    kind: browser
+    intent: a failure during the open shows an error and keeps the current album
+    given: an album open in the editor, and a folder stub whose createWritable rejects
+    when: open an archive and click the folder button
+    then:
+      - an error message shows
+      - the open album does not change
+      - the store of screen copies holds no copy of a photo from that archive
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the session changes before the writes pass, the person loses the current album view and
+      gets a broken one.
+    covers: [brief:E-8]
+    blocking: true
+
+  - id: AC-3.29
+    kind: browser
+    intent: a photo that the browser cannot decode does not stop the open
+    given: an archive with a valid structure where one photo holds bytes that are not an image
+    when: open the archive
+    then:
+      - the dialog names that photo
+      - the album opens, and the other photo shows
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If one bad photo stops the open, the whole album is lost.
+    covers: [brief:E-9]
+    blocking: true
+
+  - id: AC-3.30
+    kind: manual
+    intent: on a real iPhone and a real Android phone, an album with 300 used photos and about 1.5 GB saves and opens, on the iPhone in Safari and in Home Screen mode
+    reason_not_automatable: emulation does not have the memory limit of a phone, and the test machine has no real iPhone or Android phone
+    falsifier: >
+      If the browser tab reloads, or the download does not start, or the open shows an error, the
+      requirement fails on that phone.
+    covers: [brief:R-13]
+    blocking: true
+
+  - id: AC-3.31
+    kind: browser
+    intent: a storage failure during the open stops it and keeps the album and its folder handle
+    given: an album with a folder handle open in the editor, an archive with the same album id, and the IDBObjectStore.prototype.put stub of tests/e2e/relink.spec.ts that rejects a write of a screen copy
+    when: open the archive and accept the confirmation
+    then:
+      - an error message shows, and the album does not open with grey photos
+      - the stored folder handle is the earlier handle
+      - the album in the editor does not change
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the storage failure reads as a photo that cannot be decoded, the album opens with grey
+      photos and no error. If the handle changes before the failure, the album loses its folder.
+    covers: [brief:E-8]
+    blocking: true
+
+  - id: AC-3.32
+    kind: browser
+    intent: an archive shows its photos after a layout file showed them as missing, with no reload
+    given: a clean browser context
+    when: open the .album.json of an album, see the grey photos, then open the archive of the same album and accept the confirmation
+    then:
+      - each photo shows an image, with no page reload
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the app does not call forgetPreviews, the module cache keeps the empty value, and the photos
+      stay grey until a reload.
+    covers: [brief:R-8]
+    blocking: true
+
+  - id: AC-3.33
+    kind: browser
+    intent: a refused folder picker in the print export asks for a new click
+    given: desktop Chromium with a showDirectoryPicker stub that rejects with a SecurityError on its first call
+    when: start the print export, then click the continue button
+    then:
+      - the export dialog shows export-continue, and it shows no error
+      - the export finishes after the click
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the refusal gives an error, the print export of a large album in a real folder fails after
+      each reload.
+    covers: [brief:R-10]
+    blocking: true
+
+  - id: AC-3.34
+    kind: manual
+    intent: in real Chrome with a real folder, the print export of a large album works after a reload
+    reason_not_automatable: the system folder dialog and its permission prompt do not run in a test, and a stub needs no click and shows no prompt
+    falsifier: >
+      If the permission prompt or the folder read uses up the click time and the export shows an
+      error, R-10 fails in real use.
+    covers: [brief:R-10]
+    blocking: true
+
+  - id: AC-3.35
+    kind: manual
+    intent: a real ZIP tool lists a saved archive, and Safari on a Mac keeps the .album.zip file
+    reason_not_automatable: this needs the ZIP tool of a person and a real Mac, and the test machine has only Windows
+    falsifier: >
+      If a ZIP tool reports a header error, or Safari unpacks the file with default settings, the
+      file is not one standard ZIP for that person.
+    covers: [brief:R-2]
+    blocking: false
+
+  - id: AC-3.36
+    kind: browser
+    intent: a double click on a button of the open dialog opens the album one time
+    given: desktop Chromium with a folder stub, an album open in the editor, and an archive of 2 used photos
+    when: open the archive, then click archive-open-continue twice with no pause, and repeat with archive-open-choose-folder
+    then:
+      - the subfolder holds each photo one time, with no copy that has a -2 name
+      - the album opens one time, and a later edit saves with no error
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If a second click runs the steps again, the app writes copies into the folder of the person,
+      and one autosaver stays alive and can overwrite the album.
+    covers: [brief:R-7, brief:E-8]
+    blocking: true
+
+  - id: AC-3.37
+    kind: browser
+    intent: a replace with no folder removes the old folder handle
+    given: desktop Chromium with a folder stub, an album with a stored folder handle, and an archive with the same album id
+    when: open the archive, accept the confirmation, click archive-open-continue, reload the page, and start the print export
+    then:
+      - the export shows export-need-originals
+      - the export does not read the old folder
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the old handle stays, the export can print a different photo with the same name and size,
+      with no message.
+    covers: [brief:R-11, brief:E-3]
+    blocking: true
+
+  - id: AC-3.38
+    kind: browser
+    intent: an archive with no photo shows no folder step
+    given: desktop Chromium with a folder stub, and an archive of an album where no cell uses a photo
+    when: open the archive
+    then:
+      - archive-open-folder does not show
+      - the album opens, and the folder stub does not run
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the folder step shows, the person creates an empty folder for no files.
+    covers: [brief:E-4]
+    blocking: true
+
+  - id: AC-3.39
+    kind: browser
+    intent: a photo that decodes but has a refused name is named, and the album opens
+    given: a crafted archive with a valid image at photos/pic.gif, on a browser with no folder picker
+    when: open the archive
+    then:
+      - the album opens
+      - archive-open-undecodable names pic.gif
+      - archive-open-error does not show
+      - the page does not show the free-space message
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the open stops with the storage message, the person looks for free space, and the real
+      cause stays hidden.
+    covers: [brief:E-12]
+    blocking: true
+
+  - id: AC-3.40
+    kind: grep
+    intent: the open dialog has no second copy of the name rule or the slice write
+    run: git grep --untracked -nE "(const|function) (nameKey|freeName|writeInSlices|WRITE_SLICE_BYTES)\b" -- src/ui/ArchiveOpenDialog.tsx src/ui/ArchiveSaveDialog.tsx src/photos/archiveFolder.ts
+    expect: matches == 0
+    falsifier: >
+      If a local copy stays, a save and an open can name files differently, and this count is at
+      least 1.
+    covers: [brief:E-7]
+    blocking: true
+
+  - id: AC-3.41
+    kind: unit
+    intent: unit tests reach the folder name rules
+    run: npx vitest run tests/unit/archiveFolder.test.ts
+    expect: exit == 0
+    falsifier: >
+      If subfolderName keeps a trailing dot, or newNames gives a name that leaves the subfolder, a
+      test fails.
+    covers: [brief:E-7]
+    blocking: true
+
+  - id: AC-3.42
+    kind: browser
+    intent: a second file that the person chooses while the open dialog shows does not replace the archive
+    given: a good archive and an archive with one changed photo byte, on the album list
+    when: choose the good archive, wait for the open dialog, press Enter, choose the damaged archive if a file chooser opens, then continue the open
+    then:
+      - the album that opens holds the photo bytes of the good archive
+      - the done state does not show for the damaged archive
+      - the focus is inside the open dialog after the dialog opens
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the second file replaces the opened prop, verify does not run for it, and the dialog shows
+      the done state with the damaged photo in the album.
+    covers: [brief:E-2]
+    blocking: true
+
+  - id: AC-3.43
+    kind: browser
+    intent: a second click on the open button while the file picker is open starts no second picker
+    given: desktop Chromium with a showOpenFilePicker stub that stays open until the test resolves it, and that rejects a second open call with NotAllowedError
+    when: double click open-file, then resolve the stub with a layout file
+    then:
+      - the stub ran one time
+      - no alert shows
+      - the album of the layout file opens one time
+    tripwire: strict
+    evidence: [console_log]
+    falsifier: >
+      If the second click calls the picker again, the browser rejects it, and the person gets a
+      false error while the first picker is open.
+    covers: [brief:E-15]
+    blocking: true

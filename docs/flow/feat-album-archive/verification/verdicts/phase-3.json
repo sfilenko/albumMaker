@@ -1,0 +1,225 @@
+{
+  "phase": 3,
+  "feature": "feat-album-archive",
+  "base": "626fdaa0a464b71758f5c53d70980edb18d8fe2f",
+  "evidence_sha256": "b2268533c09b7a0e3350ab52f576ce16b5309224027a36c251c2dc1ddb22a7df",
+  "status": "pass",
+  "diff_stat": "14 files changed, 441 insertions(+), 146 deletions(-), plus 9 new files. All 5543 lines of the bundle were read.",
+  "prediction": [
+    "src/storage/layoutFile.ts: openLayoutFile removed; pickAlbumFile(): Promise<File> added; .zip in both showOpenFilePicker accept and the file input accept; a running picker call is shared with a second click (E-15); exports safeBaseName, downloadBlob, PickerWindow with showDirectoryPicker; folderPicker() is one check.",
+    "src/storage/db.ts: deletePreviews(ids), deleteDirHandle(albumId), storedPhotoIds(): Set<string>. The preview key format must match the writer.",
+    "src/ui/App.tsx: pickAlbumFile called; isZip routes to readArchive; other files go to parseLayout; separate message for LayoutFileError('version'); confirmation for the same id after readArchive and before any write; `opening` ref ignores a chosen file while a read runs or while the dialog shows; a last-error ref gives one alert for one failure; AbortError is silent; the old session closes and openSession(album, true) runs last.",
+    "src/ui/ArchiveOpenDialog.tsx (new): verify with a progress counter; folder button and continue button when showDirectoryPicker exists; running ref and claim(); finish; putDirHandle or deleteDirHandle; AbortError from the folder picker equals continue; order verify, folder files, screen copies, forgetPreviews, handle, registerOriginals, session; cleanup of new previews on failure; old ids deleted after a replace only when no stored album holds them; focus on open; no folder step with no photo.",
+    "src/photos/archiveFolder.ts (new): subfolderName with no trailing dot; newNames that stay in the subfolder; folder writing with writeInSlices from archive.ts; same exact name and same CRC reuses a file, else a new name; importFiles for screen copies; sort of skipped files into E-12, E-9 and E-8; preview cleanup.",
+    "src/photos/import.ts: exports acceptedExtension(name): string | null.",
+    "src/ui/ExportDialog.tsx: SecurityError from the folder picker gives the `matched` state, which needs a new click and shows no error.",
+    "src/export/export.ts, src/ui/PhotoPanel.tsx, src/ui/RelinkDialog.tsx: picker type and check change to PickerWindow and folderPicker(). safeName exported; downloadBlob used.",
+    "src/ui/strings.ts: open dialog strings, the version message, the archive-invalid message, the damaged message and the storage message.",
+    "tests/e2e/archive-open.spec.ts (new): navigator.storage.getDirectory() folder stub; webkit.launch and chromium.launch; a test for each point of the Completion Criterion.",
+    "tests/unit/archiveFolder.test.ts (new): subfolderName and newNames. tests/unit/storage.test.ts: deletePreviews, deleteDirHandle, storedPhotoIds.",
+    "No local nameKey, freeName, writeInSlices or WRITE_SLICE_BYTES in the dialogs or in archiveFolder.ts. No caller of openLayoutFile."
+  ],
+  "divergences": [
+    {
+      "expected": "archiveFolder.ts holds the folder writing, the name rules and the screen-copy cleanup. Step 5 (importFiles and the sort of skipped files) could stay in the dialog.",
+      "found": "makeScreenCopies and ScreenCopyError are also in src/photos/archiveFolder.ts. The dialog only calls them, and maps ScreenCopyError to the storage message.",
+      "explained_by_plan": true,
+      "plan_quote": "`src/ui/ArchiveOpenDialog.tsx` keeps the picker, `claim()`, `finish` and `putDirHandle`."
+    },
+    {
+      "expected": "Step 7 calls deletePreviews for old photo ids after a replace, with no separate store write in the cleanup.",
+      "found": "deleteReplacedPreviews (src/photos/archiveFolder.ts:138-147) calls saveAlbum(album) first, before the autosaver delay ends. Without this write, the stored album is still the old album, and storedPhotoIds holds every old id, so nothing is deleted. The same-id replace test at tests/e2e/archive-open.spec.ts:592 proves the unused photo copies go and the used copies stay.",
+      "explained_by_plan": true,
+      "plan_quote": "After a successful replace, call `deletePreviews` for the old photo ids that no stored album holds."
+    },
+    {
+      "expected": "The spec for E-7 places land-1.jpg with other bytes in the subfolder, as AC-3.27 says.",
+      "found": "tests/e2e/archive-open.spec.ts:793 places LAND-1.JPG with other bytes, the case variant. The exact name with other bytes is covered only by unit tests in tests/unit/archiveFolder.test.ts ('compares a file with the CRC of the directory', 'reads no bytes of a file with another size'). Both routes reach the same branch of writeToFolder. The probe of AC-3.27 should drive the exact name.",
+      "explained_by_plan": true,
+      "plan_quote": "The app finds it through `dir.values()`, and it compares names without regard to case. The same exact name and the same CRC-32 means the app uses that file. Any other match, or a name that the file system refuses, means the app writes under a new name."
+    },
+    {
+      "expected": "A file that exists in the subfolder is never overwritten.",
+      "found": "nameKey only lower-cases (src/storage/archive.ts:99-101 of the file, name rule of phase 1). A name that differs from an existing file only by Unicode normalization (NFC against NFD) is not found in `inFolder`. Then writeToFolder calls getFileHandle(name, { create: true }). On a file system that treats these names as one name, this can open the existing file and write over it. This verifier did not reproduce it: the test machine has no such file system. The plan asks only for case, so this is recorded as a limit of the plan, not a defect against it.",
+      "explained_by_plan": true,
+      "plan_quote": "it compares names without regard to case"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "AC-3.1",
+      "result": "pass",
+      "command": "npm run typecheck && npm run build && npm test && npm run e2e",
+      "exit_code": 0,
+      "evidence": "acceptance.mjs row, tail: '  40 skipped' / '  230 passed (1.2m)'. The separate gate run also shows 41 tests of archive-open.spec.ts per project; the 21 skipped mobile-webkit rows are the desktopOnly tests."
+    },
+    {
+      "id": "AC-3.2",
+      "result": "pass",
+      "command": "git grep --untracked -n \"openLayoutFile(\" -- src tests",
+      "exit_code": 1,
+      "evidence": "matches 0, as expected (matches == 0). No output lines."
+    },
+    {
+      "id": "AC-3.3",
+      "result": "pass",
+      "command": "git grep --untracked -n \"pickAlbumFile(\" -- src/ui/App.tsx",
+      "exit_code": 0,
+      "evidence": "src/ui/App.tsx:129:      file = await pickAlbumFile();"
+    },
+    {
+      "id": "AC-3.4",
+      "result": "pass",
+      "command": "git grep --untracked -n \"\\.zip\" -- src/storage/layoutFile.ts",
+      "exit_code": 0,
+      "evidence": "matches 2. src/storage/layoutFile.ts:96: input.accept = '.json,application/json,.zip,application/zip'; src/storage/layoutFile.ts:112: types: [{ accept: { 'application/json': ['.json'], 'application/zip': ['.zip'] } }],"
+    },
+    {
+      "id": "AC-3.5",
+      "result": "pass",
+      "command": "git grep --untracked -n \"export async function deletePreviews(\" -- src/storage/db.ts",
+      "exit_code": 0,
+      "evidence": "src/storage/db.ts:94:export async function deletePreviews(ids: string[]): Promise<void> {"
+    },
+    {
+      "id": "AC-3.6",
+      "result": "pass",
+      "command": "git grep --untracked -n \"deletePreviews(\" -- tests/unit/storage.test.ts",
+      "exit_code": 0,
+      "evidence": "tests/unit/storage.test.ts:72:  await deletePreviews(['gone-1', 'gone-2', 'never-stored']);"
+    },
+    {
+      "id": "AC-3.7",
+      "result": "pass",
+      "command": "git grep --untracked -n \"putDirHandle(\" -- src/ui/ArchiveOpenDialog.tsx",
+      "exit_code": 0,
+      "evidence": "src/ui/ArchiveOpenDialog.tsx:70:      if (written) await putDirHandle(album.id, written.dir);"
+    },
+    {
+      "id": "AC-3.8",
+      "result": "pass",
+      "command": "git grep --untracked -n \"getDirectory(\" -- tests/e2e/archive-open.spec.ts",
+      "exit_code": 0,
+      "evidence": "matches 7. tests/e2e/archive-open.spec.ts:38:      return navigator.storage.getDirectory();"
+    },
+    {
+      "id": "AC-3.9",
+      "result": "pass",
+      "command": "git grep --untracked -nE \"(webkit|chromium)\\.launch\\(\" -- tests/e2e/archive-open.spec.ts",
+      "exit_code": 0,
+      "evidence": "tests/e2e/archive-open.spec.ts:1309: const phoneEngine = await webkit.launch(); tests/e2e/archive-open.spec.ts:1310: const computerEngine = await chromium.launch();"
+    },
+    { "id": "AC-3.10", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:291 passed in the gate run." },
+    { "id": "AC-3.11", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:304 passed in the gate run." },
+    { "id": "AC-3.12", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:325 and tests/e2e/relink.spec.ts:99 passed in the gate run." },
+    { "id": "AC-3.13", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:291 (expectNoMissingPhoto) passed in the gate run." },
+    { "id": "AC-3.14", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:337 passed in the gate run." },
+    { "id": "AC-3.15", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:291 passed in the gate run." },
+    { "id": "AC-3.16", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:1306 passed in the gate run. It starts WebKit and Chromium itself." },
+    { "id": "AC-3.17", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:1306 passed in the gate run." },
+    { "id": "AC-3.18", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:402 passed in the gate run." },
+    { "id": "AC-3.19", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:384 passed in the gate run." },
+    { "id": "AC-3.20", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:367 passed in the gate run." },
+    { "id": "AC-3.21", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:436 passed in the gate run." },
+    { "id": "AC-3.22", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:476 passed in the gate run." },
+    { "id": "AC-3.23", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:548 passed in the gate run." },
+    { "id": "AC-3.24", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:592 passed in the gate run." },
+    { "id": "AC-3.25", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:737 passed in the gate run." },
+    { "id": "AC-3.26", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:747 passed in the gate run." },
+    { "id": "AC-3.27", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof, and it should use the exact name land-1.jpg. Static: tests/e2e/archive-open.spec.ts:793 uses LAND-1.JPG and passed in the gate run; the exact name is proven only in tests/unit/archiveFolder.test.ts." },
+    { "id": "AC-3.28", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:879 passed in the gate run." },
+    { "id": "AC-3.29", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:966 passed in the gate run." },
+    {
+      "id": "AC-3.30",
+      "result": "manual",
+      "reason_not_automatable": "emulation does not have the memory limit of a phone, and the test machine has no real iPhone or Android phone",
+      "evidence": "A person owes this check. No run by this verifier."
+    },
+    { "id": "AC-3.31", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:914 passed in the gate run." },
+    { "id": "AC-3.32", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:1008 passed in the gate run." },
+    { "id": "AC-3.33", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:1291 passed in the gate run." },
+    {
+      "id": "AC-3.34",
+      "result": "manual",
+      "reason_not_automatable": "the system folder dialog and its permission prompt do not run in a test, and a stub needs no click and shows no prompt",
+      "evidence": "A person owes this check. No run by this verifier."
+    },
+    {
+      "id": "AC-3.35",
+      "result": "manual",
+      "reason_not_automatable": "this needs the ZIP tool of a person and a real Mac, and the test machine has only Windows",
+      "evidence": "A person owes this check. No run by this verifier. Non-blocking in the contract."
+    },
+    { "id": "AC-3.36", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:688 passed in the gate run for both buttons." },
+    { "id": "AC-3.37", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:646 passed in the gate run." },
+    { "id": "AC-3.38", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:631 passed in the gate run." },
+    { "id": "AC-3.39", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:986 passed in the gate run." },
+    {
+      "id": "AC-3.40",
+      "result": "pass",
+      "command": "git grep --untracked -nE \"(const|function) (nameKey|freeName|writeInSlices|WRITE_SLICE_BYTES)\\b\" -- src/ui/ArchiveOpenDialog.tsx src/ui/ArchiveSaveDialog.tsx src/photos/archiveFolder.ts",
+      "exit_code": 1,
+      "evidence": "matches 0, as expected (matches == 0). No output lines."
+    },
+    {
+      "id": "AC-3.41",
+      "result": "pass",
+      "command": "npx vitest run tests/unit/archiveFolder.test.ts",
+      "exit_code": 0,
+      "evidence": "Test Files  1 passed (1) / Tests  38 passed (38)"
+    },
+    { "id": "AC-3.42", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:1051 and :1080 passed in the gate run." },
+    { "id": "AC-3.43", "result": "delegated_to_probe", "evidence": "/df:probe phase-3 owes this proof. Static: tests/e2e/archive-open.spec.ts:1225 passed in the gate run." }
+  ],
+  "gates": [
+    {
+      "name": "build_command",
+      "command": "npm run build",
+      "exit_code": 0,
+      "tail": "dist/assets/index-DpkeMZwX.js   194.49 kB | built in 71ms | PWA v2.0.0 mode generateSW, precache 8 entries, files generated dist/sw.js dist/workbox-9c191d2f.js"
+    },
+    {
+      "name": "type_check_command",
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "tail": "> album-builder@0.1.0 typecheck\n> tsc --noEmit"
+    },
+    {
+      "name": "test_command",
+      "command": "npm test && npm run e2e",
+      "exit_code": 0,
+      "tail": "Test Files  13 passed (13)\n     Tests  203 passed (203)\n...\n  40 skipped\n  230 passed (1.4m)"
+    }
+  ],
+  "consumers": [
+    { "symbol": "pickAlbumFile (replaces openLayoutFile)", "call_sites": ["src/ui/App.tsx:129"], "all_updated": true },
+    { "symbol": "folderPicker", "call_sites": ["src/export/export.ts:107", "src/photos/import.ts:40", "src/ui/PhotoPanel.tsx:99", "src/ui/RelinkDialog.tsx:116", "src/ui/ArchiveOpenDialog.tsx:93", "src/ui/ArchiveOpenDialog.tsx:110"], "all_updated": true },
+    { "symbol": "PickerWindow and WritableFile (now exported, showDirectoryPicker added)", "call_sites": ["src/storage/archive.ts:7", "src/storage/archive.ts:447", "src/ui/ArchiveSaveDialog.tsx:46"], "all_updated": true },
+    { "symbol": "downloadBlob", "call_sites": ["src/export/export.ts:84", "src/storage/layoutFile.ts:87", "src/storage/archive.ts:449"], "all_updated": true },
+    { "symbol": "safeName (now exported)", "call_sites": ["src/export/export.ts:48", "src/export/export.ts:84", "src/photos/archiveFolder.ts:20"], "all_updated": true },
+    { "symbol": "acceptedExtension and isAccepted", "call_sites": ["src/photos/import.ts:21", "src/photos/import.ts:127", "src/photos/archiveFolder.ts:29"], "all_updated": true },
+    { "symbol": "getOriginal (no longer exported)", "call_sites": ["src/photos/originals.ts:76"], "all_updated": true },
+    { "symbol": "registerChosenOriginals (new return shape)", "call_sites": ["src/ui/ExportDialog.tsx:79", "src/ui/ArchiveSaveDialog.tsx:126"], "all_updated": true },
+    { "symbol": "deletePreviews", "call_sites": ["src/photos/archiveFolder.ts:130", "tests/unit/storage.test.ts:72"], "all_updated": true },
+    { "symbol": "deleteDirHandle", "call_sites": ["src/ui/ArchiveOpenDialog.tsx:71", "tests/unit/storage.test.ts:101"], "all_updated": true },
+    { "symbol": "storedPhotoIds", "call_sites": ["src/photos/archiveFolder.ts:128", "tests/unit/storage.test.ts:87"], "all_updated": true },
+    { "symbol": "forgetPreviews (behaviour unchanged, new consumer)", "call_sites": ["src/ui/Editor.tsx:122", "src/ui/ArchiveOpenDialog.tsx:68", "src/ui/ArchiveOpenDialog.tsx:74", "src/ui/ArchiveOpenDialog.tsx:78"], "all_updated": true },
+    { "symbol": "strings.chooseOriginals and strings.originalsFound (renamed from exportChooseOriginals, exportOriginalsFound; archiveOriginalsFound removed)", "call_sites": ["src/ui/ExportDialog.tsx:150", "src/ui/ExportDialog.tsx:156", "src/ui/ArchiveSaveDialog.tsx:195", "src/ui/ArchiveSaveDialog.tsx:212"], "all_updated": true }
+  ],
+  "removed_behavior": [
+    "src/storage/layoutFile.ts openLayoutFile parsed JSON in the picker step. The parse moves to App.openFile; a search of src and tests finds no caller, and the layout route stays (tests/e2e/relink.spec.ts passes).",
+    "src/storage/layoutFile.ts inline download code goes into downloadBlob. saveLayoutFile keeps a lifetime of 0 and the print export keeps 60_000 ms, so the revoke times do not change.",
+    "src/export/export.ts WritableDirWindow, src/photos/import.ts DirPickerWindow, src/ui/PhotoPanel.tsx hasFolderPicker and the `'showDirectoryPicker' in window` check in src/ui/RelinkDialog.tsx go. folderPicker() replaces them. A truthy check differs from `in` only when the property exists with no value, which no browser does; the specs delete the property.",
+    "src/ui/App.tsx early `if (session) return <Editor>` becomes a Fragment, so that the open dialog stays mounted across the session change. Nothing depends on the old form; every editor spec passes.",
+    "src/ui/App.tsx openFile lost its direct catch of a LayoutFileError around the picker. openFileMessage holds the same mapping, and it adds the version message.",
+    "src/photos/originals.ts getOriginal lost its export and now catches a failed folder read. Only readOriginals calls it (src/photos/originals.ts:76).",
+    "src/ui/ExportDialog.tsx lost its local unmatched calculation, and it reads unmatched and sameName from registerChosenOriginals. tests/e2e/archive-save.spec.ts covers both dialogs.",
+    "src/ui/strings.ts exportChooseOriginals, exportOriginalsFound and archiveOriginalsFound go. A search of src and tests finds no use.",
+    "tests/e2e/export.spec.ts albumWithPhoto becomes a wrapper of albumWithPhotos. tests/e2e/phone-actions.spec.ts changes the row count from distinct tops to overlap runs. Both files belong to phase 2 by the phasecheck attribution."
+  ],
+  "fail_first": {
+    "present": false,
+    "skipped_reason": "The bundle holds no fail-first record for this phase, and this verifier did not make one."
+  },
+  "blockers": []
+}

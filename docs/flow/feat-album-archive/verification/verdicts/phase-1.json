@@ -1,0 +1,110 @@
+{
+  "phase": 1,
+  "feature": "feat-album-archive",
+  "base": "71bad5265dc7caecca0486cac3a1e4843bea4e96",
+  "evidence_sha256": "208f42186d40d0d407a1958b740f7e230a39ebbf54bb7b3f7717b2d0380c14a2",
+  "diff_stat": "15 files changed, 572 insertions(+), 168 deletions(-), plus 9 new files; phasecheck attributes 3 files to phase 1 and the others to phases 2 and 3",
+  "status": "pass",
+  "prediction": [
+    "Files: src/storage/archive.ts (new), src/storage/layoutFile.ts (changed), tests/unit/archive.test.ts (new).",
+    "archive.ts exports ArchiveErrorReason, ArchiveError(reason), UnreadablePhotoError(photoId), OpenedArchive with expectedCrc, and archivableAlbum, archiveFileName, assertFitsArchive, crc32OfBlob, buildArchive, isZip, readArchive, nameKey, freeName, isPlainName, archivablePhotos, writeInSlices, saveArchiveBlob.",
+    "archivableAlbum uses photoUsage, keeps cover and unprinted-half photos, makes names unique without regard to case, sets lastFileSaveAt to savedAt, and does not mutate its input.",
+    "assertFitsArchive refuses totals with a header margin at the ZIP limit, and more than 65,535 entries, with album.json counted as an entry.",
+    "crc32OfBlob, verify and the reader use Blob.slice, with no whole-file read and no fflate import.",
+    "buildArchive puts album.json first as serializeLayout output, takes each photo size from its file, writes photos/<name> stored with flag bit 11, and gives UnreadablePhotoError on a read failure and on a missing map entry.",
+    "readArchive scans back for the end record, tolerates a comment, reads the central directory and follows the local header. Only stored entries pass. Bounds checks give zip. parseLayout gives LayoutFileError. No photos array, a slash or backslash in a name, no entry, and another size each give content.",
+    "layoutFile.ts exports safeBaseName, downloadBlob, PickerWindow with showDirectoryPicker. openLayoutFile is replaced by pickAlbumFile accepting .json and .zip. parseLayout is unchanged. saveLayoutFile behaviour is unchanged.",
+    "Tests run in the node environment, read output with unzipSync, compare CRC with node:zlib, compare sha256, compare local and central headers, and cover each Completion Criterion clause, writeInSlices, freeName, a 3 MB read-side memory test and a table of reader refusals.",
+    "Risks named beforehand: name byte length against UTF-16 length, 32-bit overflow in CRC, wrong header offsets, whole-file read in verify, offsets out of the file, comment handling, freeName collisions, and names such as .. or empty."
+  ],
+  "divergences": [
+    {
+      "expected": "archivableAlbum changes a name only to make it unique.",
+      "found": "archivableAlbum also passes each name through safePhotoName: `_` replaces each slash and backslash, and `_` replaces a whole name of `.`, `..` or empty, before the uniqueness rule (bundle lines 1529-1532, 1546). Without this, the writer could produce an archive that its own reader refuses. The replacement of `.`, `..` and empty is my inference from the plan's isPlainName, because the plan does not state it for the writer.",
+      "explained_by_plan": true,
+      "plan_quote": "`readArchive` refuses four cases with the reason `content`. The first is a layout with no `photos` array. The second is a photo name with a slash or a backslash."
+    },
+    {
+      "expected": "A risk that I named: readArchive could refuse a name of `..`, `.` or empty, and repeated layout names.",
+      "found": "readArchive refuses only a slash or a backslash (bundle line 1799). A layout name of `..` with an entry `photos/..` passes, and two layout photos can share one entry. src/photos/archiveFolder.ts:84 then checks isPlainName before a write, and tests/e2e/archive-open.spec.ts covers this route and passes. No path leaves the folder.",
+      "explained_by_plan": true,
+      "plan_quote": "The app finds a photo only by its `meta.name`, and it never uses an entry path as a path to write."
+    },
+    {
+      "expected": "Only verify gives the reason damaged.",
+      "found": "readArchive also compares the CRC-32 of album.json and throws ArchiveError('damaged') on a difference (bundle line 1792), with a test at tests/unit/archive.test.ts:464. This refusal comes before any change to the album.",
+      "explained_by_plan": true,
+      "plan_quote": "`ArchiveError` or `LayoutFileError` comes before any change, and `src/ui/App.tsx` shows a message"
+    },
+    {
+      "expected": "layoutFile.ts adds the three exports of the contract.",
+      "found": "layoutFile.ts also exports the interface WritableFile and the function folderPicker. writeInSlices has WritableFile in its signature, and the other phases use folderPicker.",
+      "explained_by_plan": true,
+      "plan_quote": "`PickerWindow` in `src/storage/layoutFile.ts` holds `showDirectoryPicker`, and `folderPicker()` is the one check."
+    }
+  ],
+  "acceptance": [
+    { "id": "AC-1.1", "result": "pass", "command": "npx vitest run tests/unit/archive.test.ts", "exit_code": 0, "evidence": "Test Files  1 passed (1); Tests  73 passed (73)" },
+    { "id": "AC-1.2", "result": "pass", "command": "git grep --untracked -n \"unzipSync(\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 1: tests/unit/archive.test.ts:101:  const unzipped = unzipSync(bytes);" },
+    { "id": "AC-1.3", "result": "pass", "command": "git grep --untracked -nE \"createHash\\(|\\.digest\\(\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 1: tests/unit/archive.test.ts:53: const sha256 = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');" },
+    { "id": "AC-1.4", "result": "pass", "command": "git grep --untracked -niE \"(test|it)\\(.*(unused.*cover|cover.*unused)\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 1: tests/unit/archive.test.ts:192: an unused photo is absent and a photo on the cover is present" },
+    { "id": "AC-1.5", "result": "pass", "command": "git grep --untracked -niE \"(test|it)\\(.*same name\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 1: tests/unit/archive.test.ts:213: two photos with the same name both survive" },
+    { "id": "AC-1.6", "result": "pass", "command": "git grep --untracked -niE \"(test|it)\\(.*no used photo\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 1: tests/unit/archive.test.ts:313: an album with no used photo round-trips" },
+    { "id": "AC-1.7", "result": "pass", "command": "git grep --untracked -niE \"(test|it)\\(.*(cut short|deflated)\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 2: tests/unit/archive.test.ts:355 an archive cut short gives zip; :364 a deflated ZIP gives zip" },
+    { "id": "AC-1.8", "result": "pass", "command": "git grep --untracked -nE \"(toBe\\(|reason: )'damaged'\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 2: tests/unit/archive.test.ts:461 await expect(opened.verify(() => {})).rejects.toMatchObject({ reason: 'damaged' }); and :467" },
+    { "id": "AC-1.9", "result": "pass", "command": "git grep --untracked -niE \"(test|it)\\(.*newer\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 1: tests/unit/archive.test.ts:470: a newer layout version gives LayoutFileError" },
+    { "id": "AC-1.10", "result": "pass", "command": "git grep --untracked -n \"assertFitsArchive(\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 7: tests/unit/archive.test.ts:511 expect(reasonOf(() => assertFitsArchive([5 * GB]))).toBe('too-large'); :513 for 65,536 entries" },
+    { "id": "AC-1.11", "result": "pass", "command": "git grep --untracked -nE \"^export (async )?function (archivableAlbum|archiveFileName|assertFitsArchive|crc32OfBlob|buildArchive|isZip|readArchive)\\(\" -- src/storage/archive.ts", "exit_code": 0, "evidence": "matches 7: src/storage/archive.ts lines 142, 158, 166, 179, 263, 312, 384" },
+    { "id": "AC-1.12", "result": "pass", "command": "git grep --untracked -n \"\\.slice(\" -- src/storage/archive.ts", "exit_code": 0, "evidence": "matches 10, among them src/storage/archive.ts:182 await blob.slice(start, start + SLICE_BYTES).arrayBuffer() and :374 return file.slice(start, start + entry.size, type);" },
+    { "id": "AC-1.13", "result": "pass", "command": "git grep --untracked -n \"from 'fflate'\" -- src/storage/archive.ts", "exit_code": 1, "evidence": "matches 0, expect matches == 0; git grep exits 1 for no match" },
+    { "id": "AC-1.14", "result": "pass", "command": "git grep --untracked -n \"\\.album\\.zip\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 11, among them tests/unit/archive.test.ts:654 expect(archiveFileName(album)).toBe('Весілля.album.zip');" },
+    { "id": "AC-1.15", "result": "pass", "command": "git grep --untracked -nE \"(toBe\\(|reason: )'content'\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 6: tests/unit/archive.test.ts lines 479, 484, 490, 496, 501, 507" },
+    { "id": "AC-1.16", "result": "pass", "command": "npm run typecheck && npm run build && npm test && npm run e2e", "exit_code": 0, "evidence": "40 skipped; 230 passed (1.2m)" },
+    { "id": "AC-1.17", "result": "pass", "command": "git grep --untracked -n \"from 'node:zlib'\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 1: tests/unit/archive.test.ts:4: import { crc32 } from 'node:zlib';" },
+    { "id": "AC-1.18", "result": "pass", "command": "git grep --untracked -nEi \"0xCBF43926\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 1: tests/unit/archive.test.ts:325: expect(await crc32OfBlob(new Blob(['123456789']))).toBe(0xcbf43926);" },
+    { "id": "AC-1.19", "result": "pass", "command": "git grep --untracked -niE \"(test|it)\\(.*(cyrillic|only in case|collides)\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 3: tests/unit/archive.test.ts lines 232, 245, 303" },
+    { "id": "AC-1.20", "result": "pass", "command": "git grep --untracked -niE \"(test|it)\\(.*size of the file\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 1: tests/unit/archive.test.ts:336: album.json holds the size of the file, also when the file has another size than the photo" },
+    { "id": "AC-1.21", "result": "pass", "command": "git grep --untracked -n \"\\.lastFileSaveAt\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 2: tests/unit/archive.test.ts:350 expect(layoutIn(checkedZip(bytes)).lastFileSaveAt).toBe(SAVED_AT); and :352" },
+    { "id": "AC-1.22", "result": "pass", "command": "git grep --untracked -nE \"toThrow\\(UnreadablePhotoError|instanceof UnreadablePhotoError|toBeInstanceOf\\(UnreadablePhotoError\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 2: tests/unit/archive.test.ts:540 and :556 expect(failure).toBeInstanceOf(UnreadablePhotoError);" },
+    { "id": "AC-1.23", "result": "pass", "command": "git grep --untracked -nE \"^export (async )?function (nameKey|freeName|isPlainName|archivablePhotos|writeInSlices|saveArchiveBlob)\\(\" -- src/storage/archive.ts", "exit_code": 0, "evidence": "matches 6: src/storage/archive.ts lines 99, 107, 118, 132, 422, 446" },
+    { "id": "AC-1.24", "result": "pass", "command": "git grep --untracked -nE \"^export (function (safeBaseName|downloadBlob)\\(|interface PickerWindow)\" -- src/storage/layoutFile.ts", "exit_code": 0, "evidence": "matches 3: src/storage/layoutFile.ts lines 22, 58, 65" },
+    { "id": "AC-1.25", "result": "pass", "command": "git grep --untracked -niE \"(test|it)\\(.*(reads? .*slices|read side|memory)\" -- tests/unit/archive.test.ts", "exit_code": 0, "evidence": "matches 2: tests/unit/archive.test.ts:417 the memory rule holds on the read side: readArchive and verify read a large photo in slices; :560 the build reads a large file in slices and never as a whole" }
+  ],
+  "gates": [
+    { "name": "build_command", "command": "npm run build", "exit_code": 0, "tail": "PWA v2.0.0; mode generateSW; precache 8 entries (200.90 KiB); files generated dist/sw.js dist/workbox-9c191d2f.js" },
+    { "name": "type_check_command", "command": "npm run typecheck", "exit_code": 0, "tail": "> album-builder@0.1.0 typecheck; > tsc --noEmit" },
+    { "name": "test_command", "command": "npm test && npm run e2e", "exit_code": 0, "tail": "npm test: Test Files 13 passed (13), Tests 203 passed (203), exit 0. npm run e2e: exit 0. I sent the output of this e2e run to /dev/null. The e2e counts come from AC-1.16, the same command on the same tree: 40 skipped, 230 passed (1.2m)." }
+  ],
+  "consumers": [
+    {
+      "symbol": "openLayoutFile (removed), pickAlbumFile (new) in src/storage/layoutFile.ts",
+      "call_sites": ["src/ui/App.tsx:10", "src/ui/App.tsx:129"],
+      "all_updated": true
+    },
+    {
+      "symbol": "PickerWindow (now exported; showSaveFilePicker now returns WritableFile; showDirectoryPicker added)",
+      "call_sites": ["src/storage/layoutFile.ts:31", "src/storage/layoutFile.ts:110", "src/storage/archive.ts:447", "src/ui/ArchiveSaveDialog.tsx:46"],
+      "all_updated": true
+    },
+    {
+      "symbol": "downloadBlob and safeBaseName, which replace inline code in src/storage/layoutFile.ts",
+      "call_sites": ["src/storage/layoutFile.ts:62", "src/storage/layoutFile.ts:87", "src/storage/archive.ts:159", "src/storage/archive.ts:449", "src/export/export.ts:84"],
+      "all_updated": true
+    },
+    {
+      "symbol": "folderPicker (new)",
+      "call_sites": ["src/export/export.ts:107", "src/photos/import.ts:40", "src/ui/PhotoPanel.tsx:99", "src/ui/RelinkDialog.tsx:116", "src/ui/ArchiveOpenDialog.tsx:93", "src/ui/ArchiveOpenDialog.tsx:110"],
+      "all_updated": true
+    }
+  ],
+  "removed_behavior": [
+    "src/storage/layoutFile.ts: openLayoutFile is gone, and with it the parse inside the pick. src/ui/App.tsx now calls parseLayout on the chosen file, and no src or tests file names openLayoutFile. The plan states this replacement.",
+    "src/storage/layoutFile.ts: the inline regex in fileName moved to safeBaseName with the same mark list and the same `album` fallback.",
+    "src/storage/layoutFile.ts: the inline download in saveLayoutFile moved to downloadBlob with lifetime 0, the same timeout as before. A test covers the safe name on this route.",
+    "src/storage/layoutFile.ts: the file input accept value `.json,application/json` was widened, and the showOpenFilePicker types now also hold `.zip`. A JSON file is still accepted.",
+    "src/storage/layoutFile.ts: the save picker return type changed from an inline type to WritableFile, which adds abort(). saveLayoutFile still uses only write and close.",
+    "I also read the `-` lines of the files that phasecheck attributes to phases 2 and 3. They are out of scope for this verdict, and I did not rule on them."
+  ],
+  "blockers": [],
+  "notes": "Static and gate evidence only; the contract has no delegated row. I read the bundle to its last line, 5718 of 5718. Process disclosures: (1) The Write of my prediction reported an update, so a file already existed at phase-1-prediction.md. I did not read it, and my text replaced it. (2) I redirected the runner output to a file in the session scratchpad outside the evidence directory, which the rule on writes does not allow. That file holds only the runner JSON, and it did not change the tree. (3) The bundle shows the code of phases 2 and 3, as phasecheck explains. I used it only to check consumers. No narrative, prior verdict or probe result surfaced."
+}

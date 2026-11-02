@@ -1,0 +1,173 @@
+{
+  "phase": 2,
+  "feature": "feat-album-archive",
+  "base": "71bad5265dc7caecca0486cac3a1e4843bea4e96",
+  "status": "pass",
+  "evidence_sha256": "a310b7c417219becefa1824a611e06be32cdff1bbd98a918172d6e0143de75d0",
+  "diff_stat": "15 files changed, 572 insertions(+), 168 deletions(-) (tracked files; 9 new files are listed under NEW FILES in the bundle)",
+  "notes": [
+    "Static evidence only: 24 browser rows (AC-2.10 to AC-2.33) are delegated_to_probe, and /df:probe phase-2 still owes that runtime proof.",
+    "Bundle coverage: the prompt gave 5718 lines, and I read lines 1 to 5718 in five reads. The bundle has no NOT WALKED section.",
+    "Leak: an ls of the session scratchpad surfaced file names from other runs, for example fix-phase-2-prompt.md, fix-list.md, phase2-rows-3.json, phase2-test-gate-3.log and mutate_phase2.py. I opened none of them. The names did not change my reasoning.",
+    "Leak: the Write of phase-2-prediction.md reported 'updated', so an earlier prediction file was probably at that path. I overwrote it and did not read it.",
+    "The acceptance runner and the gates ran in sequence, and the working tree listing was the same 24 paths after the runs."
+  ],
+  "prediction": [
+    "src/photos/originals.ts: exports class MissingOriginalsError (photoIds), readOriginals(albumId, photos), registerChosenOriginals(wanted, files, onDescribed?) returning {left, ambiguous, unmatched, sameName, inexact}, forgetOriginal(photoId). getOriginal private. A rejecting dir.values() gives null.",
+    "src/export/export.ts: no class MissingOriginalsError; calls readOriginals(; maybe re-export; exports safeName; uses downloadBlob. Render output same.",
+    "src/ui/ExportDialog.tsx: calls registerChosenOriginals(; ignores inexact; shows originalsAmbiguous for ambiguous; a sameName string; second round asks only for still-missing.",
+    "src/ui/ArchiveSaveDialog.tsx (new): default/named export; props album + onSaved(at) + onClose; states ready, running, matching, originals, inexact, matched, link, picking, writing, done, error. Calls readOriginals( and registerChosenOriginals(, forgetOriginal, archivablePhotos, archivableAlbum, buildArchive, saveArchiveBlob, assertFitsArchive. No .dispatch( / .replace( / lastFileSaveAt:. running ref with claim(). Cancel (AbortError) returns to link with built Blob. Comparison of name and size after readOriginals, accepted ids kept. UnreadablePhotoError -> forgetOriginal + request. archive-close disabled in matching. Dialog takes focus on open. Test ids: action-save-archive, archive-need-originals, archive-inexact, archive-inexact-accept, archive-inexact-choose, archive-continue, archive-save, archive-close, archive-error, archive-matching.",
+    "src/ui/Editor.tsx: action-save-archive button in top bar; state for dialog; undo/redo keys ignored while dialog open; content behind inert; onSaved sets lastFileSaveAt the same as for a layout file; print export dialog unchanged.",
+    "src/ui/strings.ts: label Архів з фото; originalsAmbiguous; sameName string; matching/picking strings; link-route text says browser received the file, not completed.",
+    "src/ui/styles.css: phone widths history and action buttons 4 px side padding, font-size 13px, flex none; .editor.desktop .top-bar flex-wrap wrap.",
+    "tests/e2e/archive-helpers.ts (new), tests/e2e/archive-save.spec.ts (new) covering all 15 completion-criterion bullets on both browser projects (some picker-only tests may be skipped on webkit - must check versus 'on both browser projects').",
+    "tests/e2e/export.spec.ts: updated for close file (AC-2.26) / shared request behaviours.",
+    "tests/e2e/phone-actions.spec.ts: skip per test; 900 px desktop test; 3-rows limit at 390 px on mobile project.",
+    "Consumers of MissingOriginalsError, getOriginal elsewhere must be updated (grep src). getOriginal private means no external importers.",
+    "Removed lines: the ExportDialog local match code, the export loop; check no behaviour beyond the three named changes is lost."
+  ],
+  "divergences": [
+    {
+      "expected": "The print export changes only in its request for originals (three named changes).",
+      "found": "src/ui/ExportDialog.tsx:69 adds a fourth change: a DOMException named SecurityError from runExport now gives the 'matched' state (text Оригінали знайдено and a continue button), not the error state. No step of phase 2 names it. Its only test is in tests/e2e/archive-open.spec.ts, which the attribution gives to phase 3 ('a refused folder picker in the print export asks for a new click'). I treat the hunk as phase 3 work in a file that both phases touch, but the phase 3 section is omitted from my context, so I cannot confirm this. See blocker Q-2.",
+      "explained_by_plan": true,
+      "plan_quote": "**A folder picker needs a fresh click** (`src/ui/ExportDialog.tsx:80`). / R-10. In real Chrome, open an archive with a real folder, reload, and start the print export of a large album."
+    },
+    {
+      "expected": "The first request for originals names the missing photos, from the phase goal.",
+      "found": "src/ui/ArchiveSaveDialog.tsx:189 shows only the count in the first request (Для архіву потрібні оригінальні файли фото (2)). Names show only after a round of the file chooser, or for an unreadable file. This is the same structure as the print export, and it meets AC-2.16 and AC-2.17. The goal sentence can also mean names in the first request. See blocker Q-1.",
+      "explained_by_plan": true,
+      "plan_quote": "Add `src/ui/ArchiveSaveDialog.tsx`, with the structure of `src/ui/ExportDialog.tsx`. / With one file not chosen, no download starts, and the name of that photo shows."
+    },
+    {
+      "expected": "album.json holds lastFileSaveAt equal to the save time that the editor stores.",
+      "found": "src/ui/ArchiveSaveDialog.tsx:104 calls archivableAlbum(current, Date.now()) at the first click, and the editor gets onSaved(Date.now()) at the second click. So the time in album.json is the build time, and it is earlier than the stored time. The album cannot change between the clicks. needsBackup in src/ui/Banners.tsx:41-44 needs updatedAt > since, and updatedAt is earlier than the build, so an opening device shows no early reminder.",
+      "explained_by_plan": true,
+      "plan_quote": "The first click reads the originals, checks the size and builds the Blob."
+    },
+    {
+      "expected": "The dialog calls assertFitsArchive itself.",
+      "found": "The dialog does not call it. buildArchive calls it (src/storage/archive.ts, before the CRC loop), and the dialog maps ArchiveError('too-large') to archiveTooLarge. The spec 'an album over the ZIP limit shows its own message' passes.",
+      "explained_by_plan": true,
+      "plan_quote": "export function assertFitsArchive(sizes: number[]): void; ... No ZIP64. An album over the ZIP limit gets `ArchiveError('too-large')`, and the app shows a message (E-8)."
+    },
+    {
+      "expected": "Only the planned exports in src/photos/originals.ts.",
+      "found": "An extra export isExactOriginal(file, meta) at src/photos/originals.ts:67. registerChosenOriginals and the dialog start both use it, so the rule has one copy.",
+      "explained_by_plan": true,
+      "plan_quote": "Each rule below has one copy. ... After `readOriginals`, the save dialog compares the name and the size of each file with the photo in the album."
+    },
+    {
+      "expected": "The spec proves each point on both browser projects.",
+      "found": "On mobile-webkit, 3 tests of archive-save.spec.ts are skipped: the 2 stored-folder tests (archive-save.spec.ts:594) and the real browser-storage file test (:679). The 4 tests of export.spec.ts also skip on mobile-webkit because of the existing project skip at export.spec.ts:10. The contract rows AC-2.14 and AC-2.28 name desktop Chromium, and WebKit has no folder picker.",
+      "explained_by_plan": true,
+      "plan_quote": "given: desktop Chromium, an album with a stored folder handle of navigator.storage.getDirectory(), and that folder removed before the save"
+    }
+  ],
+  "acceptance": [
+    { "id": "AC-2.1", "result": "pass", "command": "npx playwright test tests/e2e/archive-save.spec.ts tests/e2e/phone-actions.spec.ts tests/e2e/dnd.spec.ts tests/e2e/export.spec.ts", "exit_code": 0, "evidence": "Runner row: exit 0. Tail: '13 skipped, 103 passed (29.4s)'." },
+    { "id": "AC-2.2", "result": "pass", "command": "npm run typecheck && npm run build && npm test && npm run e2e", "exit_code": 0, "evidence": "Runner row: exit 0. Tail: '40 skipped, 230 passed (1.3m)'." },
+    { "id": "AC-2.3", "result": "pass", "command": "git grep --untracked -n \"class MissingOriginalsError\" -- src/photos/originals.ts", "exit_code": 0, "evidence": "matches 1: src/photos/originals.ts:7:export class MissingOriginalsError extends Error {" },
+    { "id": "AC-2.4", "result": "pass", "command": "git grep --untracked -n \"class MissingOriginalsError\" -- src/export/export.ts", "exit_code": 1, "evidence": "matches 0" },
+    { "id": "AC-2.5", "result": "pass", "command": "git grep --untracked -n \"readOriginals(\" -- src/export/export.ts", "exit_code": 0, "evidence": "matches 1: src/export/export.ts:105:  const files = await readOriginals(a.id, a.photos.filter((p) => used.has(p.id)));" },
+    { "id": "AC-2.6", "result": "pass", "command": "git grep --untracked -n \"registerChosenOriginals(\" -- src/ui/ExportDialog.tsx", "exit_code": 0, "evidence": "matches 1: src/ui/ExportDialog.tsx:79:    const { left, ambiguous, unmatched, sameName } = await registerChosenOriginals(wanted, files);" },
+    { "id": "AC-2.7", "result": "pass", "command": "git grep --untracked -nE \"(readOriginals|registerChosenOriginals)\\(\" -- src/ui/ArchiveSaveDialog.tsx", "exit_code": 0, "evidence": "matches 2: src/ui/ArchiveSaveDialog.tsx:97 and src/ui/ArchiveSaveDialog.tsx:126" },
+    { "id": "AC-2.8", "result": "pass", "command": "git grep --untracked -nE \"\\.(dispatch|replace)\\(\" -- src/ui/ArchiveSaveDialog.tsx", "exit_code": 1, "evidence": "matches 0" },
+    { "id": "AC-2.9", "result": "pass", "command": "git grep --untracked -n \"lastFileSaveAt:\" -- src/ui/ArchiveSaveDialog.tsx", "exit_code": 1, "evidence": "matches 0" },
+    { "id": "AC-2.10", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.11", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding. The spec counts rows as runs of overlapping buttons, and this row reads distinct top values, so the probe must read the top values." },
+    { "id": "AC-2.12", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.13", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.14", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.15", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.16", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.17", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.18", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.19", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.20", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.21", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.22", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.23", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.24", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.25", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.26", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.27", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.28", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.29", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.30", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.31", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.32", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." },
+    { "id": "AC-2.33", "result": "delegated_to_probe", "evidence": "Browser check. /df:probe phase-2 owes the proof. Still outstanding." }
+  ],
+  "gates": [
+    { "name": "build_command", "command": "npm run build", "exit_code": 0, "tail": "PWA v2.0.0 / mode generateSW / precache 8 entries (200.90 KiB) / files generated / dist/sw.js / dist/workbox-9c191d2f.js" },
+    { "name": "type_check_command", "command": "npm run typecheck", "exit_code": 0, "tail": "> album-builder@0.1.0 typecheck / > tsc --noEmit" },
+    { "name": "test_command", "command": "npm test && npm run e2e", "exit_code": 0, "tail": "Vitest: Test Files 13 passed (13), Tests 203 passed (203). Playwright: 40 skipped, 230 passed (1.5m)." }
+  ],
+  "consumers": [
+    {
+      "symbol": "MissingOriginalsError (moved to src/photos/originals.ts)",
+      "call_sites": ["src/ui/ExportDialog.tsx:8", "src/ui/ExportDialog.tsx:65", "src/ui/ArchiveSaveDialog.tsx:8", "src/ui/ArchiveSaveDialog.tsx:109", "src/photos/originals.ts:80", "src/export/export.ts:90 (comment only)"],
+      "all_updated": true
+    },
+    {
+      "symbol": "getOriginal (no longer exported)",
+      "call_sites": ["src/photos/originals.ts:76"],
+      "all_updated": true
+    },
+    {
+      "symbol": "readOriginals (new)",
+      "call_sites": ["src/export/export.ts:105", "src/ui/ArchiveSaveDialog.tsx:97"],
+      "all_updated": true
+    },
+    {
+      "symbol": "registerChosenOriginals (new)",
+      "call_sites": ["src/ui/ExportDialog.tsx:79", "src/ui/ArchiveSaveDialog.tsx:126"],
+      "all_updated": true
+    },
+    {
+      "symbol": "forgetOriginal (new)",
+      "call_sites": ["src/ui/ArchiveSaveDialog.tsx:112", "src/ui/ArchiveSaveDialog.tsx:140"],
+      "all_updated": true
+    },
+    {
+      "symbol": "strings.exportChooseOriginals and strings.exportOriginalsFound (renamed to chooseOriginals and originalsFound)",
+      "call_sites": ["src/ui/ExportDialog.tsx (the choose and matched blocks)", "src/ui/ArchiveSaveDialog.tsx (the choose and matched blocks)"],
+      "all_updated": true
+    },
+    {
+      "symbol": "safeName (now exported from src/export/export.ts)",
+      "call_sites": ["src/export/export.ts:48", "src/export/export.ts:84", "src/photos/archiveFolder.ts:20"],
+      "all_updated": true
+    }
+  ],
+  "removed_behavior": [
+    "src/export/export.ts: the class MissingOriginalsError moved. The local loop over getOriginal became readOriginals, with the same order and the same error. Nothing imports the class from the export module (scoped grep of src and tests).",
+    "src/export/export.ts: the inline link download became downloadBlob(..., 60_000), with the same name and the same URL lifetime. WritableDirWindow became folderPicker(), with the same value.",
+    "src/photos/originals.ts: getOriginal is no longer exported, and no file in src or tests imports it. A rejection from canRead, dir.values() or getFile now gives null, where it earlier reached the dialog (E-11). A rejection of getDirHandle stays outside the try, so an IndexedDB failure still reaches the dialog as an error.",
+    "src/ui/ExportDialog.tsx: the local match code went away. Earlier, each photo with no match, also an ambiguous one, showed Не знайдено, and a second round asked again for all photos. Both changes are named in the plan. Earlier, a SecurityError from runExport gave the error state, and now it gives 'matched' (divergence 1, Q-2).",
+    "src/ui/strings.ts: exportChooseOriginals and exportOriginalsFound are renamed with the same text. No reference to the old names is left in src or tests.",
+    "src/ui/Editor.tsx: the root div is now in a Fragment, so that the archive dialog is outside the inert part. Each child stays, and the desktop and phone order did not change.",
+    "src/ui/styles.css: the phone action button padding changes from 4px 6px to 4px, and history buttons get the same size. tests/e2e/dnd.spec.ts did not change, and it passes.",
+    "tests/e2e/phone-actions.spec.ts: the file-level skip became a per-test skip, and the selector widened from .top-bar .actions button to .top-bar button, so the check is stronger.",
+    "tests/e2e/export.spec.ts: albumWithPhoto became a wrapper of albumWithPhotos. The existing tests keep their assertions."
+  ],
+  "blockers": [
+    {
+      "id": "Q-1",
+      "severity": "question",
+      "what": "Decision: must the first request for originals list the names of the photos, or is a count enough until the first round of the file chooser? The code shows only the count at first. R-6 in the brief, or the person, can answer this. The contract rows AC-2.16 and AC-2.17 accept the present behavior.",
+      "where": "src/ui/ArchiveSaveDialog.tsx:189",
+      "why_it_matters": "A person with a large album sees only a number, for example (300), and the app does not say which files to choose until after one round. The phase goal says 'Missing originals stop the save and the app names them'.",
+      "suggested_action": "Compare with the text of R-6. If R-6 requires names at first, add the names of the photos to the first request."
+    },
+    {
+      "id": "Q-2",
+      "severity": "question",
+      "what": "Decision: does phase 3 own the SecurityError branch of the print export dialog? The phase 3 section of the plan can answer this. It is not in my context. The hunk is not in a phase 2 step, and its only test is in tests/e2e/archive-open.spec.ts.",
+      "where": "src/ui/ExportDialog.tsx:69",
+      "why_it_matters": "If no phase owns it, the print export has a behavior that nobody agreed to: any SecurityError during an export shows Оригінали знайдено and a continue button, not an error message.",
+      "suggested_action": "Check that the phase 3 section or its contract covers this branch. If not, add it to the plan or remove it."
+    }
+  ]
+}

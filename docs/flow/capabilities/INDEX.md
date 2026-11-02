@@ -8,7 +8,7 @@ Do not read every area file._
 - export → export.md · 7 rows · last_verified 1e74b0f
 - model → model.md · 11 rows · last_verified 1e74b0f
 - photo → photo.md · 3 rows · last_verified 7cb4e2f
-- storage → storage.md · 3 rows · last_verified 7cb4e2f
-- ui → ui.md · 27 rows · last_verified 1e74b0f
+- storage → storage.md · 6 rows · last_verified 71bad52
+- ui → ui.md · 40 rows · last_verified 71bad52
 - overview → overview.md · prose: coverage note, caveats, known limits
 - superseded → superseded.md · 2 rows

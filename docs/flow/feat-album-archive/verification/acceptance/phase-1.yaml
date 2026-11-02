@@ -1,0 +1,273 @@
+phase: 1
+feature: feat-album-archive
+source: "Completion Criterion and Steps of Phase 1, .devflow/plan.md"
+checks:
+  - id: AC-1.1
+    kind: unit
+    intent: the unit tests of the archive module pass
+    run: npx vitest run tests/unit/archive.test.ts
+    expect: exit == 0
+    falsifier: >
+      If a round trip changes a photo byte, or the layout differs after a read, or a test file
+      does not exist, this exits non-zero.
+    covers: [brief:R-2, brief:R-3, brief:R-4, brief:E-1, brief:E-2, brief:E-4, brief:E-10]
+    blocking: true
+
+  - id: AC-1.2
+    kind: grep
+    intent: a second ZIP implementation reads the output, so the module does not judge its own bytes
+    run: git grep --untracked -n "unzipSync(" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the tests read the archive only with readArchive, a wrong ZIP that the module also reads
+      wrongly still passes, and this count is 0.
+    covers: [brief:R-2]
+    blocking: true
+
+  - id: AC-1.3
+    kind: grep
+    intent: the tests compare a hash of each photo
+    run: git grep --untracked -nE "createHash\(|\.digest\(" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the tests compare only file counts or file sizes, a changed byte in a photo passes, and
+      this count is 0.
+    covers: [brief:R-4]
+    blocking: true
+
+  - id: AC-1.4
+    kind: grep
+    intent: a test proves that an unused photo is absent and that a photo on the cover is present
+    run: git grep --untracked -niE "(test|it)\(.*(unused.*cover|cover.*unused)" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If archivableAlbum keeps an unused photo, or drops a photo that only a cover cell uses, no
+      test sees it, and this count is 0.
+    covers: [brief:R-4, brief:E-10]
+    blocking: true
+
+  - id: AC-1.5
+    kind: grep
+    intent: a test proves that two photos with the same name both survive
+    run: git grep --untracked -niE "(test|it)\(.*same name" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the second photo overwrites the first in the archive, no test sees it, and this count is 0.
+    covers: [brief:E-1]
+    blocking: true
+
+  - id: AC-1.6
+    kind: grep
+    intent: a test proves that an album with no used photo round-trips
+    run: git grep --untracked -niE "(test|it)\(.*no used photo" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If an archive with only album.json fails to read, no test sees it, and this count is 0.
+    covers: [brief:E-4]
+    blocking: true
+
+  - id: AC-1.7
+    kind: grep
+    intent: tests prove that an archive cut short and a deflated ZIP both give the reason zip
+    run: git grep --untracked -niE "(test|it)\(.*(cut short|deflated)" -- tests/unit/archive.test.ts
+    expect: matches >= 2
+    falsifier: >
+      If the reader accepts a file with no end record, or reads compressed bytes as a photo, no
+      test sees it, and this count is under 2.
+    covers: [brief:E-2]
+    blocking: true
+
+  - id: AC-1.8
+    kind: grep
+    intent: a test proves that a changed photo byte gives the reason damaged from verify
+    run: git grep --untracked -nE "(toBe\(|reason: )'damaged'" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If verify does not compare the CRC-32, a damaged photo opens with no message, and this
+      count is 0.
+    covers: [brief:E-2]
+    blocking: true
+
+  - id: AC-1.9
+    kind: grep
+    intent: a test proves that a newer layout version gives LayoutFileError
+    run: git grep --untracked -niE "(test|it)\(.*newer" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the reader skips parseLayout, an archive from a newer format opens as if it were valid,
+      and this count is 0.
+    covers: [brief:E-2]
+    blocking: true
+
+  - id: AC-1.10
+    kind: grep
+    intent: a test proves that sizes of 5 GB give the reason too-large
+    run: git grep --untracked -n "assertFitsArchive(" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the limit check does not run, an album over 4 GB gives a ZIP with wrong offsets, and this
+      count is 0.
+    covers: [brief:E-8]
+    blocking: true
+
+  - id: AC-1.11
+    kind: grep
+    intent: the module exports the seven functions of the plan contract
+    run: git grep --untracked -nE "^export (async )?function (archivableAlbum|archiveFileName|assertFitsArchive|crc32OfBlob|buildArchive|isZip|readArchive)\(" -- src/storage/archive.ts
+    expect: matches == 7
+    falsifier: >
+      If a function of the contract is absent or has another name, phases 2 and 3 cannot use it,
+      and this count is not 7.
+    covers: [brief:R-2, brief:R-3]
+    blocking: true
+
+  - id: AC-1.12
+    kind: grep
+    intent: the module reads a file in slices
+    run: git grep --untracked -n "\.slice(" -- src/storage/archive.ts
+    expect: matches >= 1
+    falsifier: >
+      If the module reads each whole file into memory with arrayBuffer, a phone album of 1.5 GB
+      runs out of memory, and this count is 0.
+    covers: [brief:R-4, brief:R-13]
+    blocking: true
+
+  - id: AC-1.13
+    kind: grep
+    intent: the module does not use fflate, which holds all data in memory
+    run: git grep --untracked -n "from 'fflate'" -- src/storage/archive.ts
+    expect: matches == 0
+    falsifier: >
+      If the module imports fflate, the Decision Log rule fails, and this count is 1.
+    covers: [brief:R-13]
+    blocking: true
+
+  - id: AC-1.14
+    kind: grep
+    intent: a test states the file name of the archive
+    run: git grep --untracked -n "\.album\.zip" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If archiveFileName gives another extension, no test sees it, and this count is 0.
+    covers: [brief:R-2]
+    blocking: true
+
+  - id: AC-1.15
+    kind: grep
+    intent: tests prove that a layout with no photo array, a name with a slash, a photo with no entry and an entry of another size each give the reason content
+    run: git grep --untracked -nE "(toBe\(|reason: )'content'" -- tests/unit/archive.test.ts
+    expect: matches >= 4
+    falsifier: >
+      If readArchive accepts a name such as ../x.jpg, a later write can leave the folder. If it
+      accepts a missing entry, the album opens with no photo. If it accepts another size, the folder search fails after a reload. In each case this count is under 4.
+    covers: [brief:E-2]
+    blocking: true
+
+  - id: AC-1.16
+    kind: command
+    intent: the gates of the project pass on this phase
+    run: npm run typecheck && npm run build && npm test && npm run e2e
+    expect: exit == 0
+    falsifier: >
+      If the new module has a type error, or it breaks a unit test or an end-to-end test, this
+      exits non-zero.
+    covers: [brief:R-2]
+    blocking: true
+
+  - id: AC-1.17
+    kind: grep
+    intent: the tests compare each CRC with a second CRC implementation, because fflate does not check it
+    run: git grep --untracked -n "from 'node:zlib'" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the module has a wrong CRC, fflate and verify both accept it, and a real ZIP tool can
+      refuse the file. This count is then 0.
+    covers: [brief:R-2]
+    blocking: true
+
+  - id: AC-1.18
+    kind: grep
+    intent: a test holds the check value of CRC-32
+    run: git grep --untracked -nEi "0xCBF43926" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the CRC table has a wrong polynomial, no check value sees it, and this count is 0.
+    covers: [brief:R-2]
+    blocking: true
+
+  - id: AC-1.19
+    kind: grep
+    intent: tests cover a Cyrillic name, names that differ only in case, and a collision with a generated name
+    run: git grep --untracked -niE "(test|it)\(.*(cyrillic|only in case|collides)" -- tests/unit/archive.test.ts
+    expect: matches >= 3
+    falsifier: >
+      If the name flag is absent, a ZIP tool shows wrong names. If the check of names ignores case,
+      a file overwrites another on Windows. In each case this count is under 3.
+    covers: [brief:R-2, brief:E-1]
+    blocking: true
+
+  - id: AC-1.20
+    kind: grep
+    intent: a test proves that album.json holds the size of the file
+    run: git grep --untracked -niE "(test|it)\(.*size of the file" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the module keeps the old size from the album, the folder search fails after a reload, and
+      this count is 0.
+    covers: [brief:R-3, brief:R-4]
+    blocking: true
+
+  - id: AC-1.21
+    kind: grep
+    intent: a test proves that lastFileSaveAt in album.json equals the save time
+    run: git grep --untracked -n "\.lastFileSaveAt" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the copy keeps the old time, the opening device shows the backup reminder right after an
+      open, and this count is 0.
+    covers: [brief:R-3]
+    blocking: true
+
+  - id: AC-1.22
+    kind: grep
+    intent: a test proves that a file that cannot be read gives UnreadablePhotoError
+    run: git grep --untracked -nE "toThrow\(UnreadablePhotoError|instanceof UnreadablePhotoError|toBeInstanceOf\(UnreadablePhotoError" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If the read failure gives a general error, the dialog cannot ask for that photo, and this
+      count is 0.
+    covers: [brief:R-5, brief:R-6]
+    blocking: true
+
+  - id: AC-1.23
+    kind: grep
+    intent: the shared name, photo and write parts are exports of the archive module
+    run: git grep --untracked -nE "^export (async )?function (nameKey|freeName|isPlainName|archivablePhotos|writeInSlices|saveArchiveBlob)\(" -- src/storage/archive.ts
+    expect: matches == 6
+    falsifier: >
+      If a dialog keeps its own copy of one of these parts, the export is absent, and this count is
+      under 6.
+    covers: [brief:R-4, brief:E-8]
+    blocking: true
+
+  - id: AC-1.24
+    kind: grep
+    intent: the layout file module gives the shared file name and download parts
+    run: git grep --untracked -nE "^export (function (safeBaseName|downloadBlob)\(|interface PickerWindow)" -- src/storage/layoutFile.ts
+    expect: matches == 3
+    falsifier: >
+      If the forbidden-mark list or the download keeps a separate copy, an export is absent, and
+      this count is under 3.
+    covers: [brief:R-2]
+    blocking: true
+
+  - id: AC-1.25
+    kind: grep
+    intent: a unit test covers the read side of the memory rule with a large photo
+    run: git grep --untracked -niE "(test|it)\(.*(reads? .*slices|read side|memory)" -- tests/unit/archive.test.ts
+    expect: matches >= 1
+    falsifier: >
+      If verify reads a whole photo with arrayBuffer, a 1.5 GB archive fails on a phone. With no
+      such test, each small-photo test still passes, and this count is 0.
+    covers: [brief:R-13]
+    blocking: true
